@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Monitoring Sampah</title>
+    <title>EcoScale - Dashboard</title>
 
     <!-- Memuat Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -31,7 +31,7 @@
 
         <!-- Header -->
         <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">Nama Alat</h1>
+            <h1 class="text-3xl font-bold text-gray-900">Eco Scale</h1>
             <p class="text-md text-gray-600 mt-1">Monitoring sampah berbasis IoT untuk kampus hijau Universitas
                 Diponegoro</p>
             <p id="current-date" class="text-sm text-gray-400 mt-2"></p>
@@ -62,7 +62,7 @@
             <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                 <a href="#"
                     class="border-teal-500 text-teal-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Overview</a>
-                <a href="#"
+                <a href="/fakultas"
                     class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Fakultas</a>
                 <a href="#"
                     class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Analitik</a>
