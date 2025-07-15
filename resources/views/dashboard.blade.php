@@ -102,15 +102,7 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // TODO: Ganti dengan konfigurasi Firebase proyek Anda
-        const firebaseConfig = {
-            apiKey: "AIzaSyAmG1H9e2Grw7kFTAigjTJC-vvAhC2zuX8",
-            authDomain: "smart-scale-prooject.firebaseapp.com",
-            projectId: "smart-scale-prooject",
-            storageBucket: "smart-scale-prooject.firebasestorage.app",
-            messagingSenderId: "150127108115",
-            appId: "1:150127108115:web:f3472e75ac1aaa5a025fe6",
-            measurementId: "G-K1PLYPLLRB"
-        };
+        const firebaseConfig = @json(config('services.firebase'));
 
         // Inisialisasi Firebase
         const app = initializeApp(firebaseConfig);
