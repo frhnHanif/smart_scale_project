@@ -24,14 +24,14 @@
     </style>
 </head>
 
-<body class="bg-slate-50 text-gray-800">
+<body style="background-color: #F2FCF8;" class="text-gray-800">
 
     <!-- Kontainer Utama -->
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
 
         <!-- Header -->
         <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">Eco Scale</h1>
+            <h1 class="text-3xl font-bold" style="color: #447F40;">Eco Scale</h1>
             <p class="text-md text-gray-600 mt-1">Monitoring sampah berbasis IoT untuk kampus hijau Universitas
                 Diponegoro</p>
             <p id="current-date" class="text-sm text-gray-400 mt-2"></p>
@@ -41,19 +41,19 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div class="bg-white p-6 rounded-xl shadow-md">
                 <h3 class="text-sm font-medium text-gray-500">Total Sampah Hari Ini</h3>
-                <p class="text-3xl font-bold mt-2"><span id="total-sampah">0</span> kg</p>
+                <p class="text-3xl font-bold mt-2" style="color: #447F40;"><span id="total-sampah">0</span> kg</p>
             </div>
             <div class="bg-white p-6 rounded-xl shadow-md">
                 <h3 class="text-sm font-medium text-gray-500">Sampah Organik</h3>
-                <p class="text-3xl font-bold mt-2"><span id="total-organik">0</span> kg</p>
+                <p class="text-3xl font-bold mt-2" style="color: #4D55D9;"><span id="total-organik">0</span> kg</p>
             </div>
             <div class="bg-white p-6 rounded-xl shadow-md">
                 <h3 class="text-sm font-medium text-gray-500">Sampah Anorganik</h3>
-                <p class="text-3xl font-bold mt-2"><span id="total-anorganik">0</span> kg</p>
+                <p class="text-3xl font-bold mt-2" style="color: #7417CB;"><span id="total-anorganik">0</span> kg</p>
             </div>
             <div class="bg-white p-6 rounded-xl shadow-md">
                 <h3 class="text-sm font-medium text-gray-500">Sampah Umum</h3>
-                <p class="text-3xl font-bold mt-2"><span id="total-umum">0</span> kg</p>
+                <p class="text-3xl font-bold mt-2" style="color: #936716;"><span id="total-umum">0</span> kg</p>
             </div>
         </div>
 
@@ -74,14 +74,16 @@
         <!-- Konten Grafik -->
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
             <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-md">
-                <h3 class="font-semibold text-lg mb-4">Tren Sampah Mingguan</h3>
+                <h3 class="font-semibold text-2xl" style="color: #447F40;">Tren Sampah Mingguan</h3>
+                <p class="text-sm mb-4 text-gray-500">Perbandingan produksi sampah harian dengan target</p>
                 <canvas id="weeklyTrendChart"></canvas>
             </div>
             <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
-                <h3 class="font-semibold text-lg mb-4">Distribusi Jenis Sampah</h3>
-                <div class="max-h-80 flex items-center justify-center">
-                    <canvas id="typeDistributionChart"></canvas>
-                </div>
+                <h3 class="font-semibold text-2xl" style="color: #447F40;">Distribusi Jenis Sampah</h1>
+                    <p class="text-sm mb-4 text-gray-500"">Komposisi sampah hari ini</p>
+                    <div class="max-h-80 flex items-center justify-center">
+                        <canvas id="typeDistributionChart"></canvas>
+                    </div>
             </div>
         </div>
     </div>
@@ -122,7 +124,7 @@
         const weeklyTrendChart = new Chart(weeklyTrendChartCtx, {
             type: 'line',
             data: {
-                labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
+                labels: ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'],
                 datasets: [{
                     label: 'Berat Sampah (kg)',
                     data: [0, 0, 0, 0, 0, 0, 0], // Data awal
@@ -150,10 +152,10 @@
         const typeDistributionChart = new Chart(typeDistributionChartCtx, {
             type: 'pie',
             data: {
-                labels: ['Umum', 'Organik', 'Anorganik'],
+                labels: ['Umum (kg)', 'Organik (kg)', 'Anorganik (kg)'],
                 datasets: [{
                     data: [1, 1, 1], // Data awal untuk menghindari error
-                    backgroundColor: ['#5eead4', '#14b8a6', '#0f766e'],
+                    backgroundColor: ['#D35748', '#62B682', '#5C7AF3'],
                     hoverOffset: 4
                 }]
             },

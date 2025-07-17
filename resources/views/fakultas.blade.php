@@ -28,34 +28,30 @@
     </style>
 </head>
 
-<body class="bg-slate-50 text-gray-800">
+<body style="background-color: #F2FCF8;" class="text-gray-800">
 
     <!-- Kontainer Utama -->
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
 
         <!-- Header -->
         <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">Data Sampah per Fakultas</h1>
+            <h1 class="text-3xl font-bold" style="color: #447F40;">Data Sampah per Fakultas</h1>
             <p class="text-md text-gray-600 mt-1">Lihat rincian total sampah yang dihasilkan oleh setiap fakultas.</p>
         </header>
 
         <!-- Navigasi Tab -->
         <div class="border-b border-gray-200 mb-6">
             <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                <a href="/dashboard"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                <a href="/dashboard" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                     Overview
                 </a>
-                <a href="/fakultas"
-                    class="border-teal-500 text-teal-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                <a href="/fakultas" class="border-teal-500 text-teal-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                     Fakultas
                 </a>
-                <a href="#"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                <a href="#" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                     Analitik
                 </a>
-                <a href="#"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                <a href="#" class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                     Laporan
                 </a>
             </nav>
@@ -64,12 +60,10 @@
         <!-- Tombol Filter -->
         <div class="flex justify-center mb-8">
             <div class="inline-flex rounded-md shadow-sm" role="group">
-                <button type="button" id="btn-today"
-                    class="filter-btn-active px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-gray-200 rounded-l-lg hover:bg-teal-700">
+                <button type="button" id="btn-today" class="filter-btn-active px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-gray-200 rounded-l-lg hover:bg-teal-700">
                     Hari Ini
                 </button>
-                <button type="button" id="btn-weekly"
-                    class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border-t border-b border-gray-200 hover:bg-gray-100 hover:text-teal-700">
+                <button type="button" id="btn-weekly" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border-t border-b border-gray-200 hover:bg-gray-100 hover:text-teal-700">
                     Mingguan
                 </button>
             </div>
@@ -77,48 +71,57 @@
 
         <!-- Kontainer untuk Kartu Fakultas -->
         <div id="fakultas-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Data fakultas akan dimuat di sini oleh JavaScript -->
-            <p id="loading-text" class="text-center col-span-full text-gray-500">Memuat data...</p>
+            <!-- Data kartu fakultas akan dimuat di sini -->
+            <p id="loading-text-cards" class="text-center col-span-full text-gray-500">Memuat data kartu...</p>
+        </div>
+
+        <!-- Bagian Leaderboard Baru -->
+        <div class="mt-12">
+            <header class="mb-6">
+                <h2 class="text-2xl font-bold" style="color: #447F40;">Performa Fakultas</h2>
+                <p class="text-md text-gray-600 mt-1">Monitoring produksi sampah per fakultas.</p>
+            </header>
+            <div id="leaderboard-container" class="space-y-4">
+                <!-- Data leaderboard akan dimuat di sini -->
+                <p id="loading-text-leaderboard" class="text-center col-span-full text-gray-500">Memuat data leaderboard...</p>
+            </div>
         </div>
 
     </div>
 
     <!-- Firebase SDK -->
     <script type="module">
-        import {
-            initializeApp
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import {
-            getFirestore,
-            collection,
-            query,
-            where,
-            onSnapshot,
-            Timestamp
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, query, where, onSnapshot, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Ganti dengan konfigurasi Firebase proyek Anda
         const firebaseConfig = @json(config('services.firebase'));
-
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
         const fakultasContainer = document.getElementById('fakultas-container');
-        const loadingText = document.getElementById('loading-text');
+        const leaderboardContainer = document.getElementById('leaderboard-container');
         const btnToday = document.getElementById('btn-today');
         const btnWeekly = document.getElementById('btn-weekly');
 
-        let currentFilter = 'today'; // Filter awal
-        let unsubscribe; // Untuk menyimpan fungsi listener agar bisa dilepas
+        // Data target untuk setiap fakultas (bisa dipindah ke database nanti)
+        const facultyTargets = {
+            'Teknik': 50,
+            'Kedokteran': 45,
+            'Ekonomika dan Bisnis': 55,
+            'Hukum': 35,
+            'Ilmu Budaya': 40,
+            'Peternakan dan Pertanian': 60
+        };
+        const colors = ['#2dd4bf', '#38bdf8', '#a78bfa', '#facc15', '#fb923c'];
+
+        let currentFilter = 'today';
+        let unsubscribe;
 
         function fetchAndDisplayData(filter) {
-            // Hapus listener sebelumnya jika ada
-            if (unsubscribe) {
-                unsubscribe();
-            }
+            if (unsubscribe) unsubscribe();
 
-            fakultasContainer.innerHTML =
-                '<p id="loading-text" class="text-center col-span-full text-gray-500">Memuat data...</p>';
+            fakultasContainer.innerHTML = '<p id="loading-text-cards" class="text-center col-span-full text-gray-500">Memuat data kartu...</p>';
+            leaderboardContainer.innerHTML = '<p id="loading-text-leaderboard" class="text-center col-span-full text-gray-500">Memuat data leaderboard...</p>';
 
             const now = new Date();
             let startDate;
@@ -128,7 +131,7 @@
             } else { // weekly
                 const day = now.getDay();
                 const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-                startDate = new Date(now.setDate(diff));
+                startDate = new Date(new Date().setDate(diff));
                 startDate.setHours(0, 0, 0, 0);
             }
 
@@ -137,44 +140,32 @@
 
             unsubscribe = onSnapshot(q, (querySnapshot) => {
                 const facultyData = {};
-
                 querySnapshot.forEach(doc => {
                     const data = doc.data();
-                    if (!data.fakultas) return; // Lewati jika tidak ada data fakultas
-
+                    if (!data.fakultas) return;
                     const fakultas = data.fakultas;
                     const jenis = data.jenis.toLowerCase();
                     const berat = parseFloat(data.berat) || 0;
-
                     if (!facultyData[fakultas]) {
-                        facultyData[fakultas] = {
-                            organik: 0,
-                            anorganik: 0,
-                            umum: 0,
-                            total: 0
-                        };
+                        facultyData[fakultas] = { organik: 0, anorganik: 0, umum: 0, total: 0 };
                     }
-
                     if (jenis === 'organik') facultyData[fakultas].organik += berat;
                     else if (jenis === 'anorganik') facultyData[fakultas].anorganik += berat;
                     else if (jenis === 'umum') facultyData[fakultas].umum += berat;
-
                     facultyData[fakultas].total += berat;
                 });
 
-                renderData(facultyData);
+                renderCards(facultyData);
+                renderLeaderboard(facultyData);
             });
         }
 
-        function renderData(data) {
-            fakultasContainer.innerHTML = ''; // Kosongkan kontainer
-
+        function renderCards(data) {
+            fakultasContainer.innerHTML = '';
             if (Object.keys(data).length === 0) {
-                fakultasContainer.innerHTML =
-                    '<p class="text-center col-span-full text-gray-500">Tidak ada data untuk periode ini.</p>';
+                fakultasContainer.innerHTML = '<p class="text-center col-span-full text-gray-500">Tidak ada data untuk periode ini.</p>';
                 return;
             }
-
             for (const fakultas in data) {
                 const info = data[fakultas];
                 const cardHTML = `
@@ -186,13 +177,53 @@
                             <div class="flex justify-between"><span>Anorganik</span> <span class="font-semibold">${info.anorganik.toFixed(1)} kg</span></div>
                             <div class="flex justify-between"><span>Umum</span> <span class="font-semibold">${info.umum.toFixed(1)} kg</span></div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
                 fakultasContainer.innerHTML += cardHTML;
             }
         }
 
-        // Event Listeners untuk Tombol
+        function renderLeaderboard(data) {
+            leaderboardContainer.innerHTML = '';
+            if (Object.keys(data).length === 0) {
+                leaderboardContainer.innerHTML = '<p class="text-center col-span-full text-gray-500">Tidak ada data untuk leaderboard.</p>';
+                return;
+            }
+
+            const sortedFaculties = Object.entries(data)
+                .map(([name, values]) => ({ name, ...values }))
+                .sort((a, b) => b.total - a.total);
+
+            sortedFaculties.forEach((faculty, index) => {
+                const target = facultyTargets[faculty.name] || 50; // Default target 50kg
+                const progress = Math.min((faculty.total / target) * 100, 100);
+                const color = colors[index % colors.length];
+
+                const leaderboardRowHTML = `
+                <div class="bg-white p-4 rounded-xl shadow-md">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <span class="w-3 h-3 rounded-full mr-4" style="background-color: ${color};"></span>
+                            <span class="font-bold text-lg text-gray-800">${faculty.name}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-semibold text-teal-600">${faculty.total.toFixed(1)} / ${target} kg</span>
+                            <span class="text-yellow-500 ml-2">🎗️</span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="h-2 rounded-full" style="width: ${progress}%; background-color: #34495e;"></div>
+                        </div>
+                        <div class="flex justify-between text-sm text-gray-500 mt-1">
+                            <span>Pengurangan: N/A</span>
+                            <span>${progress.toFixed(0)}% dari target</span>
+                        </div>
+                    </div>
+                </div>`;
+                leaderboardContainer.innerHTML += leaderboardRowHTML;
+            });
+        }
+
         btnToday.addEventListener('click', () => {
             currentFilter = 'today';
             btnToday.classList.add('filter-btn-active');
@@ -207,10 +238,8 @@
             fetchAndDisplayData(currentFilter);
         });
 
-        // Panggil fungsi saat halaman pertama kali dimuat
         fetchAndDisplayData(currentFilter);
     </script>
 
 </body>
-
 </html>
