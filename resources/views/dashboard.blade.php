@@ -36,6 +36,19 @@
                 Diponegoro</p>
             <p id="current-date" class="text-sm text-gray-400 mt-2"></p>
         </header>
+        <!-- Navigasi Tab -->
+        <div class="border-b border-gray-200 mb-6">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                <a href="#"
+                    class="border-teal-500 text-teal-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Overview</a>
+                <a href="/fakultas"
+                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Fakultas</a>
+                <a href="#"
+                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Analitik</a>
+                <a href="#"
+                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Laporan</a>
+            </nav>
+        </div>
 
         <!-- Kartu Statistik -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -57,19 +70,6 @@
             </div>
         </div>
 
-        <!-- Navigasi Tab -->
-        <div class="border-b border-gray-200 mb-6">
-            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                <a href="#"
-                    class="border-teal-500 text-teal-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Overview</a>
-                <a href="/fakultas"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Fakultas</a>
-                <a href="#"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Analitik</a>
-                <a href="#"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Laporan</a>
-            </nav>
-        </div>
 
         <!-- Konten Grafik -->
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
