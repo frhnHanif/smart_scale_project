@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EcoScale - Dashboard</title>
 
+    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+
     <!-- Memuat Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -30,25 +32,9 @@
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
 
         <!-- Header -->
-        <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold" style="color: #447F40;">Eco Scale</h1>
-            <p class="text-md text-gray-600 mt-1">Monitoring sampah berbasis IoT untuk kampus hijau Universitas
-                Diponegoro</p>
-            <p id="current-date" class="text-sm text-gray-400 mt-2"></p>
-        </header>
+        <x-header></x-header>
         <!-- Navigasi Tab -->
-        <div class="border-b border-gray-200 mb-6">
-            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                <a href="#"
-                    class="border-teal-500 text-teal-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Overview</a>
-                <a href="/fakultas"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Fakultas</a>
-                <a href="#"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Analitik</a>
-                <a href="#"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Laporan</a>
-            </nav>
-        </div>
+        <x-navbar></x-navbar>
 
         <!-- Kartu Statistik -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
