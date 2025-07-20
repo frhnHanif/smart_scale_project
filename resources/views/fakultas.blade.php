@@ -68,8 +68,12 @@
             </nav>
         </div> --}}
         <x-navbar></x-navbar>
+        {{-- Card title --}}
+        <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-md ">
+            <h3 class="font-semibold text-2xl" style="color: #447F40;">Performa Fakultas</h3>
+            <p class="text-sm mb-4 text-gray-500">Monitoring produksi sampah per-fakultas</p>
 
-        <!-- Tombol Filter -->
+                    <!-- Tombol Filter -->
         <div class="mb-6 flex justify-center">
             <div class="inline-flex rounded-md shadow-sm" role="group">
                 <button type="button" id="btn-today"
@@ -90,6 +94,9 @@
                 <p id="loading-text-leaderboard" class="text-center col-span-full text-gray-500">Memuat data...</p>
             </div>
         </div>
+       </div>
+
+
 
     </div>
 

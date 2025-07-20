@@ -100,7 +100,7 @@
             
          </div>
         <div class="bg-white p-6 rounded-xl shadow-md my-8">
-            <h3 class="font-semibold text-2xl" style="color: #447F40;">Performa Fakultas</h3>
+            <h3 class="font-semibold text-2xl" style="color: #447F40;">Frekuensi Fakultas</h3>
             <p class="text-sm mb-4 text-gray-500">Frekuensi pembuangan sampah di tiap fakultas</p>
             {{-- CHANGED HEIGHT FROM h-80 TO h-64 --}}
             <div class="h-64">

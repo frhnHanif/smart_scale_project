@@ -5,7 +5,7 @@ import { Timestamp, collection, query, where, onSnapshot } from "https://www.gst
 
 // Import Firebase service functions
 // Corrected: Import initializeFirebase (as it's exported from firebaseService.js)
-import { initializeFirebase, getFirestoreInstance, updateCurrentDate } from "./firebaseService.js"; 
+import { initializeFirebase, getFirestoreInstance, updateCurrentDate, setupGlobalSampahListener } from "./firebaseService.js"; 
 
 let db; 
 let unsubscribe;
@@ -157,7 +157,7 @@ function renderLeaderboard(data) {
         // --- End of icon determination ---
 
         const leaderboardRowHTML = `
-        <div class="bg-white p-6 rounded-xl shadow-md">
+        <div class="bg-white p-6 rounded-xl shadow-md border-2">
             <div class="flex items-center justify-between mb-3">
                 <div class="flex items-center">
                     <span class="w-3 h-3 rounded-full mr-4" style="background-color: ${color};"></span>
@@ -227,6 +227,7 @@ export function initFakultasPage(firebaseConfig) {
         applyFilterButtonStyles();
         fetchAndDisplayData(currentFilter);
     });
-
+    // This call relies on firebaseService.js to correctly aggregate and return data
+    setupGlobalSampahListener();
     console.log("DEBUG: Initial fetchAndDisplayData call initiated from initFakultasPage.");
 }

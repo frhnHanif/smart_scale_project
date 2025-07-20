@@ -14,3 +14,7 @@ Route::get('/dashboard', function () {
 Route::get('/fakultas', function () {
     return view('fakultas');
 });
+
+Route::get('/analitik', function () {
+    return view('analitik');
+});
