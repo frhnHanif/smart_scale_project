@@ -18,3 +18,7 @@ Route::get('/fakultas', function () {
 Route::get('/analitik', function () {
     return view('analitik');
 });
+
+Route::get('/laporan', function () {
+    return view('laporan');
+});

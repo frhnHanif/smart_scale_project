@@ -46,10 +46,10 @@
             <h3 class="font-semibold text-2xl" style="color: #447F40;">Analisis Mendalam</h3>
             <p class="text-sm mb-4 text-gray-500">Insight dari data tren EcoScale</p>
             <div class="bg-white p-6 rounded-xl shadow-md my-4 border-2">
-            <div style="height: 450px;"> {{-- Set a fixed height for the chart container --}}
-                <canvas id="analitikBarChart"></canvas>
+                <div style="height: 450px;"> {{-- Set a fixed height for the chart container --}}
+                    <canvas id="analitikBarChart"></canvas>
+                </div>
             </div>
-        </div>
         </div>
         </div>
 
