@@ -62,7 +62,7 @@
     {{-- Card 4: Status Lingkungan (Icon: Shield Check - Unchanged) --}}
     <div class="relative bg-white p-6 rounded-xl shadow-md overflow-hidden">
         {{-- Colored Border Line --}}
-        <div class="absolute top-0 left-0 h-full w-1.5 bg-yellow-500 rounded-l-xl"></div>
+        <div id="env-status-border" class="absolute top-0 left-0 h-full w-1.5 bg-yellow-500 rounded-l-xl"></div>
 
         {{-- Icon in top-right --}}
         <div class="absolute top-4 right-4">
@@ -74,7 +74,7 @@
         </div>
 
         <h3 class="text-sm font-medium text-gray-500 mb-2">Status Lingkungan</h3>
-        <p class="text-3xl font-bold text-yellow-600"><span id="env-status">Baik</span></p>
-        <p class="text-xs text-gray-400 mt-1">Target tercapai 85%</p>
+        <p id="env-status-text" class="text-3xl font-bold text-yellow-600"><span id="env-status">Memuat...</span></p>
+        <p class="text-xs text-gray-400 mt-1"><span id="env-status-subtitle">Menghitung capaian...</span></p>
     </div>
 </div>

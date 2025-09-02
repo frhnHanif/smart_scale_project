@@ -66,29 +66,44 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
     const firestoreDb = getFirestoreInstance();
     if (!firestoreDb) return () => {};
 
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    // --- DATE DEFINITIONS ---
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const startOfWeek = new Date(); // To aggregate data for the entire week
+    // For weekly trend
+    const startOfWeek = new Date(now);
     const day = startOfWeek.getDay();
     const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
     startOfWeek.setDate(diff);
     startOfWeek.setHours(0, 0, 0, 0);
-    const firebaseStartOfWeek = Timestamp.fromDate(startOfWeek);
 
-    const q = query(collection(firestoreDb, "sampah"), where("timestamp", ">=", firebaseStartOfWeek));
+    // For monthly reduction calculation
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    // The query needs to go back to the start of last month to get all necessary data
+    const firebaseStartOfLastMonth = Timestamp.fromDate(startOfLastMonth);
+
+    const q = query(collection(firestoreDb, "sampah"), where("timestamp", ">=", firebaseStartOfLastMonth));
 
     return onSnapshot(q, (querySnapshot) => {
-        let totalBeratToday = 0; // For "Total Sampah Hari Ini" global card
-        let activeFacultiesSet = new Set(); // For "Fakultas Aktif" global card
-        let weeklyTotalData = [0, 0, 0, 0, 0, 0, 0]; // For weekly trend chart in dashboard
+        // --- AGGREGATION VARIABLES ---
 
-        // Data for the "Overview Garbage Summary" cards (Organik/Anorganik/Umum breakdown)
+        // For Global Cards
+        let totalBeratToday = 0;
+        let activeFacultiesSet = new Set();
+        let totalBeratBulanIni = 0;
+        let totalBeratBulanLalu = 0;
+
+        // For Dashboard: Weekly Trend
+        let weeklyTotalData = [0, 0, 0, 0, 0, 0, 0];
+
+        // For Dashboard: Today's breakdown
         let overviewOrganikToday = 0;
         let overviewAnorganikToday = 0;
         let overviewUmumToday = 0;
 
-        // Data for Faculty Performance Chart
+        // For Analitik/Fakultas pages
         const facultyDataAggregates = {}; // { 'Fakultas Teknik': { totalBerat: 0, reduction: 0, target: 0 } }
 
 
@@ -99,7 +114,16 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
             const jenis = data.jenis;
             const fakultas = data.fakultas;
 
-            // Global "Total Sampah Hari Ini" (Top Card) and Overview Garbage Summary (Organik/Anorganik/Umum)
+            // --- DATA AGGREGATION LOGIC ---
+
+            // 1. Monthly totals for reduction calculation
+            if (docDate >= startOfThisMonth) {
+                totalBeratBulanIni += berat;
+            } else if (docDate >= startOfLastMonth) { // It's in last month
+                totalBeratBulanLalu += berat;
+            }
+
+            // 2. Today's totals for global card and dashboard overview
             if (docDate >= startOfToday) {
                 totalBeratToday += berat; // Sum for global "Total Sampah Hari Ini"
                 if (jenis === 'Organik') overviewOrganikToday += berat;
@@ -107,25 +131,33 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
                 else if (jenis === 'Umum') overviewUmumToday += berat;
             }
 
-            // Global "Fakultas Aktif" (Top Card)
+            // 3. Active faculties (all time in query range)
             if (fakultas) {
                 activeFacultiesSet.add(fakultas);
             }
 
-            // Weekly Trend Data (for dashboard chart)
-            const dayOfWeek = docDate.getDay(); // Sunday=0, Monday=1, ...
-            const index = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Adjust index to make Monday=0
-            weeklyTotalData[index] += berat;
+            // 4. Weekly Trend Data (for dashboard chart) - only for current week
+            if (docDate >= startOfWeek) {
+                const dayOfWeek = docDate.getDay(); // Sunday=0, Monday=1, ...
+                const index = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Adjust index to make Monday=0
+                weeklyTotalData[index] += berat;
+            }
 
-            // Faculty Performance Data (for dashboard chart)
-            if (fakultas) {
+            // 5. Faculty Performance Data (for analitik page chart, which is for today)
+            if (fakultas && docDate >= startOfToday) {
                 if (!facultyDataAggregates[fakultas]) {
                     facultyDataAggregates[fakultas] = { totalBerat: 0, reduction: 0, target: 0 };
                 }
                 facultyDataAggregates[fakultas].totalBerat += berat;
-                // TODO: Add logic to aggregate reduction/target for faculties if available in data
             }
         });
+
+        // --- CALCULATIONS ---
+        let avgReduction = 0;
+        if (totalBeratBulanLalu > 0) {
+            // Formula: ((last_month - this_month) / last_month) * 100
+            avgReduction = ((totalBeratBulanLalu - totalBeratBulanIni) / totalBeratBulanLalu) * 100;
+        }
 
         // --- Update Global Stats Cards (present on every page) ---
         const globalTotalSampahElem = document.getElementById('total-sampah-today');
@@ -135,11 +167,42 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
         if (globalActiveFacultiesElem) globalActiveFacultiesElem.textContent = activeFacultiesSet.size;
 
         const globalAvgReductionElem = document.getElementById('avg-reduction');
-        if (globalAvgReductionElem) globalAvgReductionElem.textContent = '16.8'; // Placeholder from image example
+        if (globalAvgReductionElem) globalAvgReductionElem.textContent = avgReduction.toFixed(1);
 
         const globalEnvStatusElem = document.getElementById('env-status');
-        if (globalEnvStatusElem) globalEnvStatusElem.textContent = 'Baik'; // Placeholder from image example
+        const globalEnvStatusSubtitleElem = document.getElementById('env-status-subtitle');
+        const envStatusBorderElem = document.getElementById('env-status-border');
+        const envStatusTextElem = document.getElementById('env-status-text');
 
+        if (globalEnvStatusElem && globalEnvStatusSubtitleElem && envStatusBorderElem && envStatusTextElem) {
+            const TARGET_AVG_REDUCTION = 15.0; // Target pengurangan sampah adalah 15%
+            let achievementPercentage = 0;
+
+            if (TARGET_AVG_REDUCTION > 0) {
+                achievementPercentage = (avgReduction / TARGET_AVG_REDUCTION) * 100;
+            } else if (avgReduction > 0) {
+                achievementPercentage = 100; // Jika target 0 tapi ada pengurangan, anggap 100% tercapai
+            }
+
+            let envStatusText = 'Kurang';
+            let borderColor = 'bg-red-500';
+            let textColor = 'text-red-600';
+
+            if (achievementPercentage >= 85) {
+                envStatusText = 'Baik';
+                borderColor = 'bg-green-500';
+                textColor = 'text-green-600';
+            } else if (achievementPercentage >= 60) {
+                envStatusText = 'Cukup';
+                borderColor = 'bg-yellow-500';
+                textColor = 'text-yellow-600';
+            }
+
+            globalEnvStatusElem.textContent = envStatusText;
+            globalEnvStatusSubtitleElem.textContent = `Capaian ${Math.max(0, achievementPercentage).toFixed(0)}% dari target`;
+            envStatusBorderElem.className = `absolute top-0 left-0 h-full w-1.5 ${borderColor} rounded-l-xl`;
+            envStatusTextElem.className = `text-3xl font-bold ${textColor}`;
+        }
 
         // --- Prepare data for page-specific callback ---
         const aggregatedDataForPage = {
