@@ -39,22 +39,49 @@ async function fetchAndDisplaySummaryStatistics() {
     // (e.g., 'app_stats' or 'global_summary') that holds these pre-calculated stats.
     try {
         // Example of how you would fetch from Firestore if you had a dedicated document:
-        // import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        // const statsDocRef = doc(db, "app_stats", "main_summary");
-        // const statsSnapshot = await getDoc(statsDocRef);
-        // if (statsSnapshot.exists()) {
-        //    const stats = statsSnapshot.data();
-        //    co2ReductionSpan.textContent = (stats.co2Reduction || 0).toFixed(0);
-        //    monthlyReductionSpan.textContent = (stats.monthlyReduction || 0).toFixed(1);
-        //    civitasInvolvedSpan.textContent = (stats.civitasCount || 0).toFixed(0);
-        // } else {
-        //    console.warn("DEBUG: No 'main_summary' document found in 'app_stats' collection.");
-        //    // Fallback to mock data or 'N/A'
-        // }
+        const now = new Date();
+        const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+        const firebaseStartOfThisMonth = Timestamp.fromDate(startOfThisMonth);
+        const firebaseStartOfLastMonth = Timestamp.fromDate(startOfLastMonth);
+
+        // Function to calculate CO2 total
+        const calculateCO2Total = (organik, anorganik) => {
+            return (organik * 1.0) + (anorganik * 0.4);
+        };
+
+        // Function to fetch data and calculate CO2 for a given month
+        const fetchCO2Data = async (startDate) => {
+            let organikTotal = 0;
+            let anorganikTotal = 0;
+            const q = query(
+                collection(db, "sampah"),
+                where("timestamp", ">=", startDate)
+            );
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.jenis === 'Organik') organikTotal += data.berat || 0;
+                else if (data.jenis === 'Anorganik') anorganikTotal += data.berat || 0;
+            });
+            return calculateCO2Total(organikTotal, anorganikTotal);
+        };
+
+        // Fetch CO2 data for this month and last month
+        const co2TotalBulanIni = await fetchCO2Data(firebaseStartOfThisMonth);
+        const co2TotalBulanLalu = await fetchCO2Data(firebaseStartOfLastMonth);
+
+        // Calculate CO2 reduction
+        let co2Reduction = 0;
+        if (co2TotalBulanLalu > 0) {
+            co2Reduction = (co2TotalBulanLalu - co2TotalBulanIni) ;
+        }
 
         // MOCK DATA for demonstration purposes:
-        co2ReductionSpan.textContent = (Math.random() * 1000 + 500).toFixed(0); // Random kg between 500-1500
+        co2ReductionSpan.textContent = co2Reduction.toFixed(1); // Random kg between 500-1500
         monthlyReductionSpan.textContent = (Math.random() * (15 - 5) + 5).toFixed(1); // Random percentage 5-15%
+
         civitasInvolvedSpan.textContent = (Math.random() * 500 + 100).toFixed(0); // Random count 100-600
         console.log("DEBUG: Summary Statistics updated with mock data.");
     } catch (error) {
@@ -65,6 +92,7 @@ async function fetchAndDisplaySummaryStatistics() {
     }
 }
 
+
 /**
  * Fetches and displays the "Pencapaian Minggu Ini".
  * (Mock data for now, replace with actual Firestore fetches)
@@ -74,7 +102,7 @@ async function fetchAndDisplayAchievements() {
     // Mock data for demonstration. Replace with actual Firebase fetches
     // Example: Fetch from an 'achievements' collection in Firestore:
     // const q = query(collection(db, "achievements"), where("week", "==", currentWeekNumber));
-    // const querySnapshot = await getDocs(q);
+    // const  querySnapshot = await getDocs(q);
     // const achievementsData = querySnapshot.docs.map(doc => doc.data());
     
     const achievementsData = [
@@ -216,6 +244,7 @@ async function fetchAndDisplayReportData() {
         reportResultsDiv.innerHTML = '<p class="text-center text-red-500 py-4">Gagal memuat laporan: ' + error.message + '</p>';
     }
 }
+
 
 /**
  * Exports the current report data to an Excel file.

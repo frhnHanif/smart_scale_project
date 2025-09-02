@@ -74,7 +74,7 @@
         </div>
 
         <h3 class="text-sm font-medium text-gray-500 mb-2">Status Lingkungan</h3>
-        <p id="env-status-text" class="text-3xl font-bold text-yellow-600"><span id="env-status">Memuat...</span></p>
+        <p id="env-status-text" class="text-3xl font-bold text-yellow-600"><span id="env-status">...</span></p>
         <p class="text-xs text-gray-400 mt-1"><span id="env-status-subtitle">Menghitung capaian...</span></p>
     </div>
 </div>
