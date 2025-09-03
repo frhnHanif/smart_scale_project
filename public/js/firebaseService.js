@@ -66,6 +66,7 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
     const firestoreDb = getFirestoreInstance();
     if (!firestoreDb) return () => {};
 
+
     // --- DATE DEFINITIONS ---
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -80,11 +81,12 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
     // For monthly reduction calculation
     const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const startOfMonthBeforeLast = new Date(now.getFullYear(), now.getMonth() - 2, 1);
 
-    // The query needs to go back to the start of last month to get all necessary data
-    const firebaseStartOfLastMonth = Timestamp.fromDate(startOfLastMonth);
+    // The query needs to go back to the start of the month before last to get all necessary data
+    const firebaseQueryStartDate = Timestamp.fromDate(startOfMonthBeforeLast);
 
-    const q = query(collection(firestoreDb, "sampah"), where("timestamp", ">=", firebaseStartOfLastMonth));
+    const q = query(collection(firestoreDb, "sampah"), where("timestamp", ">=", firebaseQueryStartDate));
 
     return onSnapshot(q, (querySnapshot) => {
         // --- AGGREGATION VARIABLES ---
@@ -94,6 +96,7 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
         let activeFacultiesSet = new Set();
         let totalBeratBulanIni = 0;
         let totalBeratBulanLalu = 0;
+        let totalBeratBulanSebelumnyaLagi = 0;
 
         // For Dashboard: Weekly Trend
         let weeklyTotalData = [0, 0, 0, 0, 0, 0, 0];
@@ -119,8 +122,10 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
             // 1. Monthly totals for reduction calculation
             if (docDate >= startOfThisMonth) {
                 totalBeratBulanIni += berat;
-            } else if (docDate >= startOfLastMonth) { // It's in last month
+            } else if (docDate >= startOfLastMonth) {
                 totalBeratBulanLalu += berat;
+            } else if (docDate >= startOfMonthBeforeLast) {
+                totalBeratBulanSebelumnyaLagi += berat;
             }
 
             // 2. Today's totals for global card and dashboard overview
@@ -159,6 +164,13 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
             avgReduction = ((totalBeratBulanLalu - totalBeratBulanIni) / totalBeratBulanLalu) * 100;
         }
 
+        // Calculate last month's reduction to be used as this month's target
+        let targetReductionFromLastMonth = 0;
+        if (totalBeratBulanSebelumnyaLagi > 0) {
+            // Formula: ((month_before_last - last_month) / month_before_last) * 100
+            targetReductionFromLastMonth = ((totalBeratBulanSebelumnyaLagi - totalBeratBulanLalu) / totalBeratBulanSebelumnyaLagi) * 100;
+        }
+
         // --- Update Global Stats Cards (present on every page) ---
         const globalTotalSampahElem = document.getElementById('total-sampah-today');
         if (globalTotalSampahElem) globalTotalSampahElem.textContent = totalBeratToday.toFixed(1);
@@ -175,31 +187,36 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
         const envStatusTextElem = document.getElementById('env-status-text');
 
         if (globalEnvStatusElem && globalEnvStatusSubtitleElem && envStatusBorderElem && envStatusTextElem) {
-            const TARGET_AVG_REDUCTION = 15.0; // Target pengurangan sampah adalah 15%
+            const TARGET_AVG_REDUCTION = targetReductionFromLastMonth;
             let achievementPercentage = 0;
 
             if (TARGET_AVG_REDUCTION > 0) {
-                achievementPercentage = (avgReduction / TARGET_AVG_REDUCTION) * 100;
+                achievementPercentage = (Math.max(0, avgReduction) / TARGET_AVG_REDUCTION) * 100;
             } else if (avgReduction > 0) {
                 achievementPercentage = 100; // Jika target 0 tapi ada pengurangan, anggap 100% tercapai
             }
 
             let envStatusText = 'Kurang';
+            let envStatusSubtitleText;
             let borderColor = 'bg-red-500';
             let textColor = 'text-red-600';
 
             if (achievementPercentage >= 85) {
                 envStatusText = 'Baik';
+                envStatusSubtitleText = 'Capaian Pengurangan > 85%';
                 borderColor = 'bg-green-500';
                 textColor = 'text-green-600';
             } else if (achievementPercentage >= 60) {
                 envStatusText = 'Cukup';
+                envStatusSubtitleText = 'Capaian Pengurangan 60-85%';
                 borderColor = 'bg-yellow-500';
                 textColor = 'text-yellow-600';
+            } else {
+                envStatusSubtitleText = 'Capaian pengurangan < 60%';
             }
 
             globalEnvStatusElem.textContent = envStatusText;
-            globalEnvStatusSubtitleElem.textContent = `Capaian ${Math.max(0, achievementPercentage).toFixed(0)}% dari target`;
+            globalEnvStatusSubtitleElem.textContent = envStatusSubtitleText;
             envStatusBorderElem.className = `absolute top-0 left-0 h-full w-1.5 ${borderColor} rounded-l-xl`;
             envStatusTextElem.className = `text-3xl font-bold ${textColor}`;
         }

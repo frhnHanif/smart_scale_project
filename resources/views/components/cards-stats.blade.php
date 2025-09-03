@@ -19,7 +19,7 @@
 
         <h3 class="text-sm font-medium text-gray-500 mb-2">Total Sampah</h3>
         <p class="text-3xl font-bold" style="color: #447F40;"><span id="total-sampah-today">0</span> kg</p>
-        <p class="text-xs text-gray-400 mt-1">Keselurhan sampah hari ini</p>
+        <p class="text-xs text-gray-400 mt-1">Keseluruhan sampah hari ini</p>
     </div>
 
     {{-- Card 2: Fakultas Aktif (Icon: Building - FIXED) --}}
