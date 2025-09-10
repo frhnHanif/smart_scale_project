@@ -41,46 +41,61 @@ async function fetchAndDisplaySummaryStatistics() {
         // Example of how you would fetch from Firestore if you had a dedicated document:
         const now = new Date();
         const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
         const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const endOfLastMonth = new Date(startOfThisMonth.getTime() - 1);
 
         const firebaseStartOfThisMonth = Timestamp.fromDate(startOfThisMonth);
+        const firebaseEndOfThisMonth = Timestamp.fromDate(endOfThisMonth);
         const firebaseStartOfLastMonth = Timestamp.fromDate(startOfLastMonth);
+        const firebaseEndOfLastMonth = Timestamp.fromDate(endOfLastMonth);
 
         // Function to calculate CO2 total
         const calculateCO2Total = (organik, anorganik) => {
             return (organik * 1.0) + (anorganik * 0.4);
         };
 
-        // Function to fetch data and calculate CO2 for a given month
-        const fetchCO2Data = async (startDate) => {
+        // Function to fetch data for a given month range
+        const fetchMonthlyData = async (startDate, endDate) => {
             let organikTotal = 0;
             let anorganikTotal = 0;
+            let umumTotal = 0;
+            let beratTotal = 0;
             const q = query(
                 collection(db, "sampah"),
-                where("timestamp", ">=", startDate)
+                where("timestamp", ">=", startDate),
+                where("timestamp", "<=", endDate)
             );
             const querySnapshot = await getDocs(q);
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-                if (data.jenis === 'Organik') organikTotal += data.berat || 0;
-                else if (data.jenis === 'Anorganik') anorganikTotal += data.berat || 0;
+                const berat = data.berat || 0;
+                if (data.jenis === 'Organik') organikTotal += berat;
+                else if (data.jenis === 'Anorganik') anorganikTotal += berat;
+                else if (data.jenis === 'Umum') umumTotal += berat;
+                beratTotal += berat; 
             });
-            return calculateCO2Total(organikTotal, anorganikTotal);
+            return {
+                co2: calculateCO2Total(organikTotal, anorganikTotal),
+                totalBerat: beratTotal
+            };
         };
 
-        // Fetch CO2 data for this month and last month
-        const co2TotalBulanIni = await fetchCO2Data(firebaseStartOfThisMonth);
-        const co2TotalBulanLalu = await fetchCO2Data(firebaseStartOfLastMonth);
+        // Fetch data for this month and last month
+        const dataBulanIni = await fetchMonthlyData(firebaseStartOfThisMonth, firebaseEndOfThisMonth);
+        const dataBulanLalu = await fetchMonthlyData(firebaseStartOfLastMonth, firebaseEndOfLastMonth);
 
         // Calculate CO2 reduction
         let co2Reduction = 0;
-        if (co2TotalBulanLalu > 0) {
-            co2Reduction = (co2TotalBulanLalu - co2TotalBulanIni) ;
+        if (dataBulanLalu.co2 > 0) {
+            co2Reduction = (dataBulanLalu.co2 - dataBulanIni.co2);
         }
 
-        // MOCK DATA for demonstration purposes:
-        co2ReductionSpan.textContent = co2Reduction.toFixed(1); // Random kg between 500-1500
-        monthlyReductionSpan.textContent = (Math.random() * (15 - 5) + 5).toFixed(1); // Random percentage 5-15%
+        // Calculate monthly waste reduction in kg (now includes ALL waste types)
+        const monthlyReductionKg = dataBulanLalu.totalBerat - dataBulanIni.totalBerat;
+
+        co2ReductionSpan.textContent = co2Reduction.toFixed(1);
+        monthlyReductionSpan.textContent = monthlyReductionKg.toFixed(1);
 
         civitasInvolvedSpan.textContent = (Math.random() * 500 + 100).toFixed(0); // Random count 100-600
         console.log("DEBUG: Summary Statistics updated with mock data.");
@@ -104,7 +119,7 @@ async function fetchAndDisplayAchievements() {
     // const q = query(collection(db, "achievements"), where("week", "==", currentWeekNumber));
     // const  querySnapshot = await getDocs(q);
     // const achievementsData = querySnapshot.docs.map(doc => doc.data());
-    
+
     const achievementsData = [
         { text: 'Target pengurangan sampah plastik tercapai 120%', status: 'checked' },
         { text: 'Fakultas Psikologi meraih penghargaan "Kampus Terhijau"', status: 'checked' },
@@ -124,14 +139,14 @@ async function fetchAndDisplayAchievements() {
 
     achievementsData.forEach(achievement => {
         let iconSvg = '';
-        
+
         // Determine icon based on status
         if (achievement.status === 'checked') {
             iconSvg = `<svg class="achievement-icon text-green-500 w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>`;
         } else if (achievement.status === 'hourglass') {
             iconSvg = `<svg class="achievement-icon text-yellow-500 w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7.55 7.55a.75.75 0 00-.53-.22h-.75a.75.75 0 00-.53.22L4.5 9.55a.75.75 0 00-.22.53v.75a.75.75 0 00.22.53l1.27 1.27a.75.75 0 00.53.22h.75a.75.75 0 00.53-.22l1.27-1.27a.75.75 0 00.22-.53v-.75a.75.75 0 00-.22-.53l-1.27-1.27zm4.9-.53l-1.27-1.27a.75.75 0 00-.53-.22h-.75a.75.75 0 00-.53.22L9.5 7.55a.75.75 0 00-.22.53v.75a.75.75 0 00.22.53l1.27 1.27a.75.75 0 00.53.22h.75a.75.75 0 00.53-.22l1.27-1.27a.75.75 0 00.22-.53v-.75a.75.75 0 00-.22-.53z" clip-rule="evenodd"></path></svg>`;
         }
-        
+
         achievementsListUl.innerHTML += `
             <li class="flex items-center text-gray-700 gap-2 mb-1">
                 ${iconSvg}
