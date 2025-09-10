@@ -79,19 +79,19 @@
                     <p class="text-xs font-medium text-gray-800 mt-1">Penurunan Sampah Bulan Ini</p>
                 </div>
 
-                {{-- Card 3: Civitas Terlibat --}}
+                {{-- Card 3: Total Sampah Bulan Ini --}}
                 <div class="bg-purple-50 p-4 rounded-lg flex flex-col items-center justify-center text-center">
-                    {{-- Icon for People/Community --}}
+                    {{-- Icon for Total Waste (Trash Can) --}}
                     <svg class="w-10 h-10 text-purple-400 mb-2" fill="currentColor" viewBox="0 0 20 20"
                         xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd"
-                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z"
+                            d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
                             clip-rule="evenodd"></path>
                     </svg>
                     {{-- Value --}}
-                    <p class="text-3xl font-bold text-purple-600"><span id="civitas-involved">0</span> orang</p>
+                    <p class="text-3xl font-bold text-purple-600"><span id="monthly-total">0</span> kg</p>
                     {{-- Description Text (now below value) --}}
-                    <p class="text-xs font-medium text-gray-800 mt-1">Civitas yang Terlibat</p>
+                    <p class="text-xs font-medium text-gray-800 mt-1">Total Sampah Bulan Ini</p>
                 </div>
             </div>
 
@@ -99,8 +99,8 @@
 
 
         <div class="bg-white p-6 rounded-xl shadow-md mb-8">
-            <h3 class="font-semibold text-2xl" style="color: #447F40;">Pencapaian Minggu Ini</h3>
-            <p class="text-sm mb-4 text-gray-500">Melihat kilas balik pencapaian pada Minggu ini</p>
+            <h3 class="font-semibold text-2xl" style="color: #447F40;">Pencapaian Bulan Ini</h3>
+            <p class="text-sm mb-4 text-gray-500">Melihat kilas balik pencapaian pada Bulan ini</p>
             <ul id="achievements-list" class="mt-4 space-y-3">
                 <li class="flex items-center text-gray-700">
                     <svg class="achievement-icon text-gray-400 w-4 h-4 mr-3 flex-shrink-0" fill="none"

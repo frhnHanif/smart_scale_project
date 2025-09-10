@@ -19,26 +19,79 @@ let reportTable;
 let reportTableBody;
 let exportReportBtn;
 
-// NEW DOM elements for Summary Statistics
+// DOM elements for Summary Statistics
 let co2ReductionSpan;
 let monthlyReductionSpan;
-let civitasInvolvedSpan;
+let monthlyTotalSpan;
 
-// NEW DOM elements for Achievements
+// DOM elements for Achievements
 let achievementsListUl;
 
 
 /**
- * Fetches and displays the main summary statistics.
- * (Mock data for now, replace with actual Firestore fetches)
+ * HELPER: Calculates the number of unique faculties that submitted data in a date range.
+ * @param {Timestamp} startDate - The start date for the query.
+ * @param {Timestamp} endDate - The end date for the query.
+ * @returns {Promise<number>} - The count of active faculties.
+ */
+async function getActiveFaculties(startDate, endDate) {
+    const facultySet = new Set();
+    const q = query(
+        collection(db, "sampah"),
+        where("timestamp", ">=", startDate),
+        where("timestamp", "<=", endDate)
+    );
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach(doc => {
+        if (doc.data().fakultas) {
+            facultySet.add(doc.data().fakultas);
+        }
+    });
+    return facultySet.size;
+}
+
+/**
+ * HELPER: Calculates data input consistency from the start of the current month to today.
+ * @returns {Promise<{count: number, totalDays: number}>} - An object containing the count of days with entries
+ * and the current day of the month.
+ */
+async function calculateInputConsistency() {
+    const today = new Date();
+    // Set the start date to the 1st day of the current month
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    startOfMonth.setHours(0, 0, 0, 0); // Ensure it starts from the very beginning of the day
+
+    const firebaseStartDate = Timestamp.fromDate(startOfMonth);
+    const firebaseEndDate = Timestamp.fromDate(today);
+
+    const daysWithData = new Set();
+    const q = query(
+        collection(db, "sampah"),
+        where("timestamp", ">=", firebaseStartDate),
+        where("timestamp", "<=", firebaseEndDate)
+    );
+
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach(doc => {
+        const docDate = doc.data().timestamp.toDate().toISOString().split('T')[0]; // Format as 'YYYY-MM-DD'
+        daysWithData.add(docDate);
+    });
+
+    // Return an object with the count and the total days so far this month
+    return {
+        count: daysWithData.size,
+        totalDays: today.getDate() // Returns the day of the month (e.g., 10 for Sep 10th)
+    };
+}
+
+
+/**
+ * Fetches and displays the main summary statistics AND returns data for achievements.
+ * @returns {Promise<object|null>} - An object with calculated data or null on error.
  */
 async function fetchAndDisplaySummaryStatistics() {
     console.log("DEBUG: Fetching Summary Statistics.");
-    // Mock data for demonstration. Replace with actual Firebase fetches.
-    // In a real app, this would involve fetching from a dedicated collection
-    // (e.g., 'app_stats' or 'global_summary') that holds these pre-calculated stats.
     try {
-        // Example of how you would fetch from Firestore if you had a dedicated document:
         const now = new Date();
         const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const endOfThisMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -50,22 +103,11 @@ async function fetchAndDisplaySummaryStatistics() {
         const firebaseStartOfLastMonth = Timestamp.fromDate(startOfLastMonth);
         const firebaseEndOfLastMonth = Timestamp.fromDate(endOfLastMonth);
 
-        // Function to calculate CO2 total
-        const calculateCO2Total = (organik, anorganik) => {
-            return (organik * 1.0) + (anorganik * 0.4);
-        };
+        const calculateCO2Total = (organik, anorganik) => (organik * 1.0) + (anorganik * 0.4);
 
-        // Function to fetch data for a given month range
         const fetchMonthlyData = async (startDate, endDate) => {
-            let organikTotal = 0;
-            let anorganikTotal = 0;
-            let umumTotal = 0;
-            let beratTotal = 0;
-            const q = query(
-                collection(db, "sampah"),
-                where("timestamp", ">=", startDate),
-                where("timestamp", "<=", endDate)
-            );
+            let organikTotal = 0, anorganikTotal = 0, umumTotal = 0, beratTotal = 0;
+            const q = query(collection(db, "sampah"), where("timestamp", ">=", startDate), where("timestamp", "<=", endDate));
             const querySnapshot = await getDocs(q);
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
@@ -73,77 +115,104 @@ async function fetchAndDisplaySummaryStatistics() {
                 if (data.jenis === 'Organik') organikTotal += berat;
                 else if (data.jenis === 'Anorganik') anorganikTotal += berat;
                 else if (data.jenis === 'Umum') umumTotal += berat;
-                beratTotal += berat; 
+                beratTotal += berat;
             });
             return {
                 co2: calculateCO2Total(organikTotal, anorganikTotal),
-                totalBerat: beratTotal
+                totalBerat: beratTotal,
+                organikTotal,
+                anorganikTotal,
+                umumTotal,
             };
         };
 
-        // Fetch data for this month and last month
-        const dataBulanIni = await fetchMonthlyData(firebaseStartOfThisMonth, firebaseEndOfThisMonth);
-        const dataBulanLalu = await fetchMonthlyData(firebaseStartOfLastMonth, firebaseEndOfLastMonth);
+        const [dataBulanIni, dataBulanLalu, activeFacultyCount, consistencyData] = await Promise.all([
+            fetchMonthlyData(firebaseStartOfThisMonth, firebaseEndOfThisMonth),
+            fetchMonthlyData(firebaseStartOfLastMonth, firebaseEndOfLastMonth),
+            getActiveFaculties(firebaseStartOfThisMonth, firebaseEndOfThisMonth),
+            calculateInputConsistency()
+        ]);
 
-        // Calculate CO2 reduction
-        let co2Reduction = 0;
-        if (dataBulanLalu.co2 > 0) {
-            co2Reduction = (dataBulanLalu.co2 - dataBulanIni.co2);
-        }
-
-        // Calculate monthly waste reduction in kg (now includes ALL waste types)
+        const co2Reduction = (dataBulanLalu.co2 > 0) ? (dataBulanLalu.co2 - dataBulanIni.co2) : 0;
         const monthlyReductionKg = dataBulanLalu.totalBerat - dataBulanIni.totalBerat;
 
         co2ReductionSpan.textContent = co2Reduction.toFixed(1);
         monthlyReductionSpan.textContent = monthlyReductionKg.toFixed(1);
+        monthlyTotalSpan.textContent = dataBulanIni.totalBerat.toFixed(1);
 
-        civitasInvolvedSpan.textContent = (Math.random() * 500 + 100).toFixed(0); // Random count 100-600
-        console.log("DEBUG: Summary Statistics updated with mock data.");
+        console.log("DEBUG: Summary Statistics updated.");
+
+        return {
+            monthlyReductionKg,
+            lastMonthTotal: dataBulanLalu.totalBerat,
+            activeFacultyCount,
+            sortedWasteKg: dataBulanIni.organikTotal + dataBulanIni.anorganikTotal,
+            unsortedWasteKg: dataBulanIni.umumTotal,
+            consistencyData,
+        };
+
     } catch (error) {
         console.error("DEBUG ERROR: Failed to fetch summary statistics:", error);
         co2ReductionSpan.textContent = 'N/A';
         monthlyReductionSpan.textContent = 'N/A';
-        civitasInvolvedSpan.textContent = 'N/A';
+        monthlyTotalSpan.textContent = 'N/A';
+        return null;
     }
 }
 
 
 /**
- * Fetches and displays the "Pencapaian Minggu Ini".
- * (Mock data for now, replace with actual Firestore fetches)
+ * Displays the "Pencapaian Minggu Ini" based on calculated data.
+ * @param {object} summaryData - The data object from fetchAndDisplaySummaryStatistics.
  */
-async function fetchAndDisplayAchievements() {
+async function fetchAndDisplayAchievements(summaryData) {
     console.log("DEBUG: Fetching Achievements.");
-    // Mock data for demonstration. Replace with actual Firebase fetches
-    // Example: Fetch from an 'achievements' collection in Firestore:
-    // const q = query(collection(db, "achievements"), where("week", "==", currentWeekNumber));
-    // const  querySnapshot = await getDocs(q);
-    // const achievementsData = querySnapshot.docs.map(doc => doc.data());
 
-    const achievementsData = [
-        { text: 'Target pengurangan sampah plastik tercapai 120%', status: 'checked' },
-        { text: 'Fakultas Psikologi meraih penghargaan "Kampus Terhijau"', status: 'checked' },
-        { text: 'Implementasi program composting di 4 fakultas', status: 'checked' },
-        { text: 'Integrasi dengan sistem waste-to-energy dalam progress', status: 'hourglass' },
-        { text: 'Sosialisasi pemilahan sampah di 70% civitas', status: 'checked' },
-        { text: 'Pengembangan aplikasi mobile untuk pemantauan sampah', status: 'hourglass' },
-    ];
+    achievementsListUl.innerHTML = '';
 
-    achievementsListUl.innerHTML = ''; // Clear previous content
-
-    if (achievementsData.length === 0) {
-        achievementsListUl.innerHTML = '<li class="text-center text-gray-500 py-2">Tidak ada pencapaian minggu ini.</li>';
-        console.log("DEBUG: No achievements to display.");
+    if (!summaryData) {
+        achievementsListUl.innerHTML = '<li class="text-center text-gray-500 py-2">Gagal memuat data pencapaian.</li>';
+        console.log("DEBUG: No summary data for achievements.");
         return;
     }
 
+    const {
+        monthlyReductionKg,
+        lastMonthTotal,
+        activeFacultyCount,
+        sortedWasteKg,
+        unsortedWasteKg,
+        consistencyData
+    } = summaryData;
+
+    const achievementsData = [
+        {
+            text: `Jumlah fakultas aktif bulan ini: <strong>${activeFacultyCount}</strong>`,
+            status: activeFacultyCount > 0 ? 'checked' : 'hourglass'
+        },
+        {
+            text: `Total pengurangan <strong>${monthlyReductionKg.toFixed(1)} kg</strong> sampah dari ${lastMonthTotal.toFixed(1)} kg sampah bulan lalu`,
+            status: 'checked'
+        },
+        {
+            text: 'Target berat sampah tercapai',
+            status: monthlyReductionKg >= 0 ? 'checked' : 'hourglass'
+        },
+        {
+            text: `Jenis sampah berhasil dipilah <strong>${sortedWasteKg.toFixed(1)} kg</strong> dan ${unsortedWasteKg.toFixed(1)} kg belum dipilah`,
+            status: 'checked'
+        },
+        {
+            text: `Konsistensi input data: <strong>${consistencyData.count} dari ${consistencyData.totalDays} hari</strong> bulan ini`,
+            status: (consistencyData.totalDays > 0 && (consistencyData.count / consistencyData.totalDays) >= 0.7) ? 'checked' : 'hourglass'
+        }
+    ];
+
     achievementsData.forEach(achievement => {
         let iconSvg = '';
-
-        // Determine icon based on status
         if (achievement.status === 'checked') {
             iconSvg = `<svg class="achievement-icon text-green-500 w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>`;
-        } else if (achievement.status === 'hourglass') {
+        } else {
             iconSvg = `<svg class="achievement-icon text-yellow-500 w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7.55 7.55a.75.75 0 00-.53-.22h-.75a.75.75 0 00-.53.22L4.5 9.55a.75.75 0 00-.22.53v.75a.75.75 0 00.22.53l1.27 1.27a.75.75 0 00.53.22h.75a.75.75 0 00.53-.22l1.27-1.27a.75.75 0 00.22-.53v-.75a.75.75 0 00-.22-.53l-1.27-1.27zm4.9-.53l-1.27-1.27a.75.75 0 00-.53-.22h-.75a.75.75 0 00-.53.22L9.5 7.55a.75.75 0 00-.22.53v.75a.75.75 0 00.22.53l1.27 1.27a.75.75 0 00.53.22h.75a.75.75 0 00.53-.22l1.27-1.27a.75.75 0 00.22-.53v-.75a.75.75 0 00-.22-.53z" clip-rule="evenodd"></path></svg>`;
         }
 
@@ -160,17 +229,15 @@ async function fetchAndDisplayAchievements() {
 
 /**
  * Fetches and displays report data based on filters for the table.
- * (This is your existing table report function)
  */
 async function fetchAndDisplayReportData() {
     console.log("DEBUG: fetchAndDisplayReportData called (for table report).");
 
-    // Show loading state, hide table and no data message
     loadingReportText.classList.remove('hidden');
     noDataReportText.classList.add('hidden');
     reportTable.classList.add('hidden');
     reportTableBody.innerHTML = '';
-    exportReportBtn.classList.add('hidden'); // Hide export button initially
+    exportReportBtn.classList.add('hidden');
 
     const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
     const endDate = endDateInput.value ? new Date(endDateInput.value) : null;
@@ -182,7 +249,6 @@ async function fetchAndDisplayReportData() {
         return;
     }
 
-    // Adjust end date to include the whole day
     endDate.setHours(23, 59, 59, 999);
 
     const firebaseStartDate = Timestamp.fromDate(startDate);
@@ -201,7 +267,7 @@ async function fetchAndDisplayReportData() {
         collection(db, "sampah"),
         where("timestamp", ">=", firebaseStartDate),
         where("timestamp", "<=", firebaseEndDate),
-        orderBy("timestamp", "asc") // Order by timestamp for chronological reports
+        orderBy("timestamp", "asc")
     );
 
     if (selectedFaculty) {
@@ -209,21 +275,18 @@ async function fetchAndDisplayReportData() {
     }
 
     try {
-        const querySnapshot = await getDocs(q); // Using getDocs for a one-time fetch (for reports)
-        console.log("DEBUG: Report querySnapshot size:", querySnapshot.size);
-
-        currentReportData = []; // Reset data for export
+        const querySnapshot = await getDocs(q);
+        currentReportData = [];
 
         if (querySnapshot.empty) {
             loadingReportText.classList.add('hidden');
             noDataReportText.classList.remove('hidden');
-            exportReportBtn.classList.add('hidden');
             return;
         }
 
         querySnapshot.forEach(doc => {
             const data = doc.data();
-            const docDate = data.timestamp?.toDate ? data.timestamp.toDate() : new Date(); // Fallback for invalid timestamp
+            const docDate = data.timestamp?.toDate ? data.timestamp.toDate() : new Date();
             const formattedDate = docDate.toLocaleDateString('id-ID', {
                 year: 'numeric',
                 month: 'long',
@@ -236,7 +299,7 @@ async function fetchAndDisplayReportData() {
                 'Jenis Sampah': data.jenis || 'N/A',
                 'Berat (kg)': (data.berat || 0).toFixed(1)
             };
-            currentReportData.push(rowData); // Store for export
+            currentReportData.push(rowData);
 
             const rowHTML = `
                 <tr>
@@ -251,7 +314,7 @@ async function fetchAndDisplayReportData() {
 
         loadingReportText.classList.add('hidden');
         reportTable.classList.remove('hidden');
-        exportReportBtn.classList.remove('hidden'); // Show export button if data exists
+        exportReportBtn.classList.remove('hidden');
 
     } catch (error) {
         console.error("DEBUG ERROR: Failed to fetch report data:", error);
@@ -269,11 +332,9 @@ async function exportReport() {
         alert("Tidak ada data untuk diexport.");
         return;
     }
-
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(currentReportData);
     XLSX.utils.book_append_sheet(wb, ws, "Laporan Sampah");
-
     XLSX.writeFile(wb, "Laporan_Sampah.xlsx");
 }
 
@@ -289,15 +350,12 @@ export function initLaporanPage(firebaseConfig) {
     db = getFirestoreInstance();
 
     if (!db) {
-        console.error("DEBUG ERROR: Firestore DB is not available. Check Firebase config or firebaseService.js.");
+        console.error("DEBUG ERROR: Firestore DB is not available.");
         return;
     }
-    console.log("DEBUG: Firestore DB available in initLaporanPage.");
 
-    // Update current date in header
     updateCurrentDate('current-date');
 
-    // Get DOM elements for existing report table filters
     startDateInput = document.getElementById('start-date');
     endDateInput = document.getElementById('end-date');
     facultyFilterSelect = document.getElementById('faculty-filter');
@@ -309,33 +367,31 @@ export function initLaporanPage(firebaseConfig) {
     reportTableBody = document.getElementById('report-table-body');
     exportReportBtn = document.getElementById('export-report-btn');
 
-    // Get NEW DOM elements for Summary Statistics
     co2ReductionSpan = document.getElementById('co2-reduction');
     monthlyReductionSpan = document.getElementById('monthly-reduction');
-    civitasInvolvedSpan = document.getElementById('civitas-involved');
-
-    // Get NEW DOM elements for Achievements
+    monthlyTotalSpan = document.getElementById('monthly-total');
     achievementsListUl = document.getElementById('achievements-list');
 
-    // Set default dates if not already set by Blade (e.g., if page loads fresh)
     if (!startDateInput.value) {
         const today = new Date();
         const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         startDateInput.valueAsDate = firstDayOfMonth;
     }
     if (!endDateInput.value) {
-        endDateInput.valueAsDate = new Date(); // Today's date
+        endDateInput.valueAsDate = new Date();
     }
 
-    // Add event listeners
     generateReportBtn.addEventListener('click', fetchAndDisplayReportData);
     exportReportBtn.addEventListener('click', exportReport);
 
-    // Initial load for all sections
-    fetchAndDisplaySummaryStatistics(); // NEW call
-    fetchAndDisplayAchievements();      // NEW call
-    fetchAndDisplayReportData();        // Existing call for table report
-    setupGlobalSampahListener();
+    const loadInitialData = async () => {
+        const summaryData = await fetchAndDisplaySummaryStatistics();
+        await fetchAndDisplayAchievements(summaryData);
+        await fetchAndDisplayReportData();
+        setupGlobalSampahListener();
+    };
+
+    loadInitialData();
 
     console.log("DEBUG: Laporan page initialized. Initial data fetches initiated.");
 }
