@@ -1,3 +1,5 @@
+{{-- resources/views/fakultas.blade.php --}}
+
 <!DOCTYPE html>
 <html lang="id">
 
@@ -25,82 +27,69 @@
             font-family: 'Inter', sans-serif;
         }
 
+        .filter-btn {
+            @apply px-4 py-2 text-sm font-medium transition-colors duration-200;
+        }
 
+        .filter-btn-active {
+            @apply bg-teal-600 text-white;
+        }
+        .filter-btn-active:hover {
+            @apply bg-teal-700;
+        }
+
+        .filter-btn:not(.filter-btn-active) {
+            @apply bg-white text-gray-900;
+        }
+        .filter-btn:not(.filter-btn-active):hover {
+            @apply bg-gray-100 text-teal-700;
+        }
     </style>
 </head>
 
 <body style="background-color: #F2FCF8;" class="text-gray-800">
 
-    <!-- Kontainer Utama -->
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
 
-        <!-- Header -->
-        {{-- <header class="text-center mb-8">
-            <h1 class="text-3xl font-bold" style="color: #447F40;">Performa Fakultas</h1>
-            <p class="text-md text-gray-600 mt-1">Monitoring produksi sampah per fakultas berdasarkan periode.</p>
-        </header> --}}
         <x-header></x-header>
 
-        {{-- Summary Cards --}}
+        {{-- Global Summary Cards --}}
         <x-cards-stats></x-cards-stats>
 
-
-
-        <!-- Navigasi Tab -->
-        {{-- <div class="border-b border-gray-200 mb-6">
-            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                <a href="/dashboard"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                    Overview
-                </a>
-                <a href="/fakultas"
-                    class="border-teal-500 text-teal-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                    Fakultas
-                </a>
-                <a href="#"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                    Analitik
-                </a>
-                <a href="#"
-                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                    Laporan
-                </a>
-            </nav>
-        </div> --}}
         <x-navbar></x-navbar>
+
         {{-- Card title --}}
         <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-md ">
             <h3 class="font-semibold text-2xl" style="color: #447F40;">Performa Fakultas</h3>
             <p class="text-sm mb-4 text-gray-500">Monitoring produksi sampah per-fakultas</p>
 
-                    <!-- Tombol Filter -->
-        <div class="mb-6 flex justify-center">
-            <div class="inline-flex rounded-md shadow-sm" role="group">
-                <button type="button" id="btn-today"
-                    class="border border-gray-200 rounded-l-lg"> {{-- Initial classes --}}
-                    Hari Ini
-                </button>
-                <button type="button" id="btn-weekly"
-                    class="border-y border-r border-gray-200 rounded-r-lg -ml-px"> {{-- Initial classes --}}
-                    Mingguan
-                </button>
+            <h4 class="font-bold text-lg text-gray-800 mt-8 mb-4">Pengurangan Sampah Tertinggi (%)</h4>
+            <div class="flex justify-center mb-6">
+                <div class="inline-flex rounded-md shadow-sm" role="group">
+                    <button type="button" id="reduction-btn-today" class="filter-btn border border-gray-200 rounded-l-lg">Hari Ini</button>
+                    <button type="button" id="reduction-btn-weekly" class="filter-btn border-y border-r border-gray-200 -ml-px">Mingguan</button>
+                    <button type="button" id="reduction-btn-monthly" class="filter-btn border border-gray-200 rounded-r-lg -ml-px">Bulanan</button>
+                </div>
             </div>
-        </div>
-
-        <!-- Bagian Leaderboard (Menggantikan Kartu) -->
-        <div class="mt-6">
-            <div id="leaderboard-container" class="space-y-4">
-                <!-- Data leaderboard akan dimuat di sini -->
-                <p id="loading-text-leaderboard" class="text-center col-span-full text-gray-500">Memuat data...</p>
+            <div id="reduction-leaderboard-container" class="space-y-4">
+                <p id="loading-reduction" class="text-center col-span-full text-gray-500">Memuat data...</p>
             </div>
+
+            <h4 class="font-bold text-lg text-gray-800 mt-8 mb-4">Pencapaian Target Produksi Sampah</h4>
+            <div class="flex justify-center mb-6">
+                <div class="inline-flex rounded-md shadow-sm" role="group">
+                    <button type="button" id="target-btn-today" class="filter-btn border border-gray-200 rounded-l-lg">Hari Ini</button>
+                    <button type="button" id="target-btn-weekly" class="filter-btn border-y border-r border-gray-200 -ml-px">Mingguan</button>
+                    <button type="button" id="target-btn-monthly" class="filter-btn border border-gray-200 rounded-r-lg -ml-px">Bulanan</button>
+                </div>
+            </div>
+            <div id="target-leaderboard-container" class="space-y-4">
+                <p id="loading-target" class="text-center col-span-full text-gray-500">Memuat data...</p>
+            </div>
+            
         </div>
-       </div>
-
-
-
     </div>
 
-    <!-- Firebase SDK -->
     <script>
         window.firebaseConfig = @json(config('services.firebase'));
     </script>
@@ -108,18 +97,15 @@
     <script type="module">
         import { initFakultasPage } from "{{ asset('js/fakultas.js') }}";
 
-        // Wait for the DOM to be fully loaded before initializing scripts
         document.addEventListener('DOMContentLoaded', function() {
             const firebaseConfig = window.firebaseConfig;
 
             if (firebaseConfig) {
-                initFakultasPage(firebaseConfig); // Initialize the Fakultas page's leaderboard
+                initFakultasPage(firebaseConfig);
             } else {
                 console.error("Firebase configuration not found. Cannot initialize Fakultas page.");
             }
         });
     </script>
-
 </body>
-
 </html>
