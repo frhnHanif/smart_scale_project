@@ -7,7 +7,7 @@ let db;
 let unsubscribe;
 
 const facultyTargets = {
-    'Teknik': 50, 'Kedokteran': 45, 'Ekonomika dan Bisnis': 55, 'Hukum': 35, 'Ilmu Budaya': 40, 'Peternakan dan Pertanian': 60
+    'FT': 50, 'FK': 45, 'FEB': 55, 'FH': 35, 'FIB': 40, 'FPP': 60
 };
 const colors = ['#2dd4bf', '#38bdf8', '#a78bfa', '#facc15', '#fb923c'];
 
@@ -238,7 +238,7 @@ function renderReductionLeaderboard(currentData, previousData) {
 function renderTargetLeaderboard(data) {
     const container = document.getElementById('target-leaderboard-container');
     container.innerHTML = '';
-    const sorted = Object.entries(data).map(([name, values]) => ({ name, total: values, target: facultyTargets[name] || 50 })).sort((a, b) => a.total - b.total);
+    const sorted = Object.entries(data).map(([name, values]) => ({ name, total: values, target: facultyTargets[name] || 55 })).sort((a, b) => a.total - b.total);
 
     if (sorted.every(f => f.total === 0)) {
         container.innerHTML = '<p class="text-center text-gray-500">Belum ada data timbunan untuk periode ini.</p>';
