@@ -4,7 +4,7 @@ import {
     setupGlobalSampahListener
 } from "./firebaseService.js";
 
-// Global variables for charts (faculty chart removed)
+// Global variables for charts
 let weeklyTrendChart;
 let typeDistributionChart;
 
@@ -50,9 +50,11 @@ function initWeeklyTrendChart(ctxId) {
 const noDataDoughnutText = {
     id: 'noDataDoughnutText',
     beforeDraw(chart, args, options) {
-        const { ctx, data } = chart;
+        const {
+            ctx,
+            data
+        } = chart;
         const total = data.datasets[0].data.reduce((sum, val) => sum + val, 0);
-
         const isNoRealData = (total === 1 && data.labels.length === 1 && data.labels[0] === 'No Data Today');
 
         if (isNoRealData) {
@@ -61,10 +63,8 @@ const noDataDoughnutText = {
             ctx.fillStyle = '#888';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-
             const centerX = (chart.chartArea.left + chart.chartArea.right) / 2;
             const centerY = (chart.chartArea.top + chart.chartArea.bottom) / 2;
-
             ctx.fillText('No Data Today', centerX, centerY);
             ctx.restore();
         }
@@ -79,10 +79,10 @@ function initTypeDistributionChart(ctxId) {
         typeDistributionChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Umum (kg)', 'Organik (kg)', 'Anorganik (kg)'],
+                labels: ['Organik (kg)', 'Anorganik (kg)', 'Residu (kg)'],
                 datasets: [{
                     data: [1, 1, 1],
-                    backgroundColor: ['#D35748', '#62B682', '#5C7AF3'],
+                    backgroundColor: ['#62B682', '#5C7AF3', '#D35748'],
                     hoverOffset: 4,
                     borderColor: '#ffffff',
                     borderWidth: 2
@@ -107,17 +107,18 @@ function initTypeDistributionChart(ctxId) {
 
 // --- Page-specific UI Update Function (called by firebaseService) ---
 function updateDashboardSpecificUI(data) {
+    // ✅ FIX: Default values are added to prevent NaN errors if data is missing.
     const {
-        overviewOrganikToday,
-        overviewAnorganikToday,
-        overviewUmumToday,
-        weeklyTotalData
-        // facultyDataAggregates has been removed
-    } = data;
+        overviewOrganikToday = 0,
+        overviewAnorganikToday = 0,
+        overviewResiduToday = 0,
+        weeklyTotalData = [0, 0, 0, 0, 0, 0, 0]
+    } = data || {}; // Use || {} to guard against null/undefined data object
 
     // 1. Update "Overview Garbage Summary" cards
     const overviewTotalSampahElem = document.getElementById('total-sampah');
-    if (overviewTotalSampahElem) overviewTotalSampahElem.textContent = (overviewOrganikToday + overviewAnorganikToday + overviewUmumToday).toFixed(1);
+    // Calculation will now safely produce 0 instead of NaN
+    if (overviewTotalSampahElem) overviewTotalSampahElem.textContent = (overviewOrganikToday + overviewAnorganikToday + overviewResiduToday).toFixed(1);
 
     const overviewTotalOrganikElem = document.getElementById('total-organik');
     if (overviewTotalOrganikElem) overviewTotalOrganikElem.textContent = overviewOrganikToday.toFixed(1);
@@ -125,8 +126,8 @@ function updateDashboardSpecificUI(data) {
     const overviewTotalAnorganikElem = document.getElementById('total-anorganik');
     if (overviewTotalAnorganikElem) overviewTotalAnorganikElem.textContent = overviewAnorganikToday.toFixed(1);
 
-    const overviewTotalUmumElem = document.getElementById('total-umum');
-    if (overviewTotalUmumElem) overviewTotalUmumElem.textContent = overviewUmumToday.toFixed(1);
+    const overviewTotalResiduElem = document.getElementById('total-residu');
+    if (overviewTotalResiduElem) overviewTotalResiduElem.textContent = overviewResiduToday.toFixed(1);
 
 
     // 2. Update Weekly Trend Chart
@@ -138,12 +139,12 @@ function updateDashboardSpecificUI(data) {
 
     // 3. Update Type Distribution Chart (Doughnut)
     if (typeDistributionChart) {
-        let hasActualData = overviewUmumToday > 0 || overviewOrganikToday > 0 || overviewAnorganikToday > 0;
+        let hasActualData = overviewOrganikToday > 0 || overviewAnorganikToday > 0 || overviewResiduToday > 0;
 
         if (hasActualData) {
-            typeDistributionChart.data.datasets[0].data = [overviewUmumToday, overviewOrganikToday, overviewAnorganikToday];
-            typeDistributionChart.data.datasets[0].backgroundColor = ['#D35748', '#62B682', '#5C7AF3'];
-            typeDistributionChart.data.labels = ['Umum (kg)', 'Organik (kg)', 'Anorganik (kg)'];
+            typeDistributionChart.data.datasets[0].data = [overviewOrganikToday, overviewAnorganikToday, overviewResiduToday];
+            typeDistributionChart.data.datasets[0].backgroundColor = ['#62B682', '#5C7AF3', '#D35748'];
+            typeDistributionChart.data.labels = ['Organik (kg)', 'Anorganik (kg)', 'Residu (kg)'];
             typeDistributionChart.options.plugins.legend.display = true;
             typeDistributionChart.options.cutout = '80%';
         } else {
@@ -155,8 +156,6 @@ function updateDashboardSpecificUI(data) {
         }
         typeDistributionChart.update();
     }
-
-    // Section 4 for Faculty Performance Chart has been completely removed.
 }
 
 
@@ -170,7 +169,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         initWeeklyTrendChart('weeklyTrendChart');
         initTypeDistributionChart('typeDistributionChart');
-        // The call to initFacultyPerformanceChart has been removed.
 
         setupGlobalSampahListener(updateDashboardSpecificUI);
 

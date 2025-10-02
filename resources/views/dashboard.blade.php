@@ -82,7 +82,7 @@
                         </div>
                         <div>
                             <h4 class="text-sm font-medium text-gray-500">Residu</h4>
-                            <p class="text-xl font-bold" style="color: #D35748;"><span id="total-umum">0</span> kg</p>
+                            <p class="text-xl font-bold" style="color: #D35748;"><span id="total-residu">0</span> kg</p>
                         </div>
                     </div>
                 </div>

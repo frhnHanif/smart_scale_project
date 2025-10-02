@@ -32,123 +32,111 @@ export function getFirestoreInstance() {
 }
 
 /**
- * Updates the current date displayed on an HTML element.
- * This can be called from any page's main script.
- * @param {string} elementId - The ID of the HTML element to update.
+ * Memperbarui tanggal terkini pada elemen HTML.
+ * @param {string} elementId - ID elemen HTML yang akan diperbarui.
  */
 export function updateCurrentDate(elementId) {
     const today = new Date();
     const dateElement = document.getElementById(elementId);
     if (dateElement) {
-        // Updated location to Semarang, Indonesia and current date
-        const options = { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' };
+        const options = {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        };
         const formattedDate = today.toLocaleDateString('id-ID', options);
-        // dateElement.textContent = `Kamis, 17 Juli 2025`; // Placeholder for the fixed date in the image
-        // Or if you want the actual current date:
-        dateElement.textContent = formattedDate; 
+        dateElement.textContent = formattedDate;
     } else {
         console.warn(`Element with ID '${elementId}' not found for date update.`);
     }
 }
 
 /**
- * Sets up a real-time listener for "sampah" collection data.
- * It also updates the global statistic cards (e.g., total sampah today, active faculties).
- * @param {function(object): void} [pageSpecificCallback] - Optional callback for page-specific logic
- * to receive aggregated data.
- * @returns {function(): void} - The unsubscribe function for the listener.
+ * Menyiapkan listener real-time untuk data koleksi "sampah".
+ * Fungsi ini mengagregasi data untuk statistik global dan pembaruan UI spesifik halaman.
+ * @param {function(object): void} [pageSpecificCallback] - Callback opsional untuk logika spesifik halaman.
+ * @returns {function(): void} - Fungsi untuk berhenti mendengarkan (unsubscribe).
  */
 export function setupGlobalSampahListener(pageSpecificCallback = null) {
     const firestoreDb = getFirestoreInstance();
     if (!firestoreDb) return () => {};
 
 
-    // --- DATE DEFINITIONS ---
+    // --- DEFINISI PERIODE WAKTU ---
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    // For weekly trend
-    const startOfWeek = new Date(now);
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-    startOfWeek.setDate(diff);
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    // For monthly reduction calculation
     const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const startOfMonthBeforeLast = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    
+    // Untuk tren mingguan, atur ke hari Senin di minggu ini
+    const startOfWeek = new Date(now);
+    const day = startOfWeek.getDay(); // Minggu = 0, Senin = 1, ...
+    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // Penyesuaian untuk Minggu
+    startOfWeek.setDate(diff);
+    startOfWeek.setHours(0, 0, 0, 0);
 
-    // The query needs to go back to the start of the month before last to get all necessary data
+    // Query data mulai dari dua bulan yang lalu untuk mencakup semua perhitungan
     const firebaseQueryStartDate = Timestamp.fromDate(startOfMonthBeforeLast);
-
     const q = query(collection(firestoreDb, "sampah"), where("timestamp", ">=", firebaseQueryStartDate));
 
     return onSnapshot(q, (querySnapshot) => {
-        // --- AGGREGATION VARIABLES ---
-
-        // For Global Cards
+        // --- VARIABEL AGREGASI ---
         let totalBeratToday = 0;
-        let activeFacultiesSet = new Set();
+        let activeFacultiesThisMonthSet = new Set();
         let totalBeratBulanIni = 0;
         let totalBeratBulanLalu = 0;
         let totalBeratBulanSebelumnyaLagi = 0;
-
-        // For Dashboard: Weekly Trend
-        let weeklyTotalData = [0, 0, 0, 0, 0, 0, 0];
-
-        // For Dashboard: Today's breakdown
+        let weeklyTotalData = [0, 0, 0, 0, 0, 0, 0]; // [Senin, Selasa, ..., Minggu]
         let overviewOrganikToday = 0;
         let overviewAnorganikToday = 0;
-        let overviewUmumToday = 0;
-
-        // For Analitik/Fakultas pages
-        const facultyDataAggregates = {}; // { 'Fakultas Teknik': { totalBerat: 0, reduction: 0, target: 0 } }
+        let overviewResiduToday = 0;
+        const facultyDataAggregates = {};
 
 
         querySnapshot.forEach((doc) => {
             const data = doc.data();
+            
+            // ✅ PERBAIKAN: Memastikan dokumen memiliki timestamp untuk mencegah error
+            if (!data.timestamp) {
+                return; // Lewati dokumen jika tidak ada timestamp
+            }
+
             const berat = data.berat || 0;
             const docDate = data.timestamp.toDate();
             const jenis = data.jenis;
             const fakultas = data.fakultas;
 
-            // --- DATA AGGREGATION LOGIC ---
+            // --- LOGIKA AGREGASI DATA ---
 
-            // 1. Monthly totals for reduction calculation
+            // 1. Total bulanan untuk kalkulasi reduksi & fakultas aktif bulan ini
             if (docDate >= startOfThisMonth) {
                 totalBeratBulanIni += berat;
+                if (fakultas) activeFacultiesThisMonthSet.add(fakultas);
             } else if (docDate >= startOfLastMonth) {
                 totalBeratBulanLalu += berat;
             } else if (docDate >= startOfMonthBeforeLast) {
                 totalBeratBulanSebelumnyaLagi += berat;
             }
 
-            // 2. Today's totals for global card and dashboard overview
+            // 2. Total harian untuk kartu statistik dan rincian dashboard
             if (docDate >= startOfToday) {
-                totalBeratToday += berat; // Sum for global "Total Sampah Hari Ini"
+                totalBeratToday += berat;
                 if (jenis === 'Organik') overviewOrganikToday += berat;
                 else if (jenis === 'Anorganik') overviewAnorganikToday += berat;
-                else if (jenis === 'Umum') overviewUmumToday += berat;
+                else if (jenis === 'Residu') overviewResiduToday += berat;
             }
 
-            // 3. Active faculties (all time in query range)
-            if (fakultas) {
-                activeFacultiesSet.add(fakultas);
-            }
-
-            // 4. Weekly Trend Data (for dashboard chart) - only for current week
+            // 3. Data tren mingguan untuk grafik dashboard
             if (docDate >= startOfWeek) {
-                const dayOfWeek = docDate.getDay(); // Sunday=0, Monday=1, ...
-                const index = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Adjust index to make Monday=0
+                const dayOfWeek = docDate.getDay();
+                // Sesuaikan indeks agar Senin = 0, Selasa = 1, ..., Minggu = 6
+                const index = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
                 weeklyTotalData[index] += berat;
             }
 
-            // 5. Faculty Performance Data (for analitik page chart, which is for today)
+            // 4. Data performa fakultas harian untuk halaman analitik
             if (fakultas && docDate >= startOfToday) {
                 if (!facultyDataAggregates[fakultas]) {
                     facultyDataAggregates[fakultas] = { totalBerat: 0, reduction: 0, target: 0 };
@@ -157,30 +145,28 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
             }
         });
 
-        // --- CALCULATIONS ---
+        // --- KALKULASI SETELAH AGREGASI ---
         let avgReduction = 0;
         if (totalBeratBulanLalu > 0) {
-            // Formula: ((last_month - this_month) / last_month) * 100
             avgReduction = ((totalBeratBulanLalu - totalBeratBulanIni) / totalBeratBulanLalu) * 100;
         }
 
-        // Calculate last month's reduction to be used as this month's target
         let targetReductionFromLastMonth = 0;
         if (totalBeratBulanSebelumnyaLagi > 0) {
-            // Formula: ((month_before_last - last_month) / month_before_last) * 100
             targetReductionFromLastMonth = ((totalBeratBulanSebelumnyaLagi - totalBeratBulanLalu) / totalBeratBulanSebelumnyaLagi) * 100;
         }
 
-        // --- Update Global Stats Cards (present on every page) ---
+        // --- PEMBARUAN KARTU STATISTIK GLOBAL ---
         const globalTotalSampahElem = document.getElementById('total-sampah-today');
         if (globalTotalSampahElem) globalTotalSampahElem.textContent = totalBeratToday.toFixed(1);
 
         const globalActiveFacultiesElem = document.getElementById('active-faculties');
-        if (globalActiveFacultiesElem) globalActiveFacultiesElem.textContent = activeFacultiesSet.size;
+        if (globalActiveFacultiesElem) globalActiveFacultiesElem.textContent = activeFacultiesThisMonthSet.size;
 
         const globalAvgReductionElem = document.getElementById('avg-reduction');
         if (globalAvgReductionElem) globalAvgReductionElem.textContent = avgReduction.toFixed(1);
-
+        
+        // Logika untuk kartu Status Lingkungan
         const globalEnvStatusElem = document.getElementById('env-status');
         const globalEnvStatusSubtitleElem = document.getElementById('env-status-subtitle');
         const envStatusBorderElem = document.getElementById('env-status-border');
@@ -193,26 +179,24 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
             if (TARGET_AVG_REDUCTION > 0) {
                 achievementPercentage = (Math.max(0, avgReduction) / TARGET_AVG_REDUCTION) * 100;
             } else if (avgReduction > 0) {
-                achievementPercentage = 100; // Jika target 0 tapi ada pengurangan, anggap 100% tercapai
+                achievementPercentage = 100; // Jika tidak ada target tapi ada reduksi, anggap 100%
             }
 
             let envStatusText = 'Kurang';
-            let envStatusSubtitleText;
+            let envStatusSubtitleText = 'Capaian reduksi < 60%';
             let borderColor = 'bg-red-500';
             let textColor = 'text-red-600';
 
             if (achievementPercentage >= 85) {
                 envStatusText = 'Baik';
-                envStatusSubtitleText = 'Capaian Pengurangan > 85%';
+                envStatusSubtitleText = 'Capaian Reduksi > 85%';
                 borderColor = 'bg-green-500';
                 textColor = 'text-green-600';
             } else if (achievementPercentage >= 60) {
                 envStatusText = 'Cukup';
-                envStatusSubtitleText = 'Capaian Pengurangan 60-85%';
+                envStatusSubtitleText = 'Capaian Reduksi 60-85%';
                 borderColor = 'bg-yellow-500';
                 textColor = 'text-yellow-600';
-            } else {
-                envStatusSubtitleText = 'Capaian pengurangan < 60%';
             }
 
             globalEnvStatusElem.textContent = envStatusText;
@@ -221,16 +205,15 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
             envStatusTextElem.className = `text-3xl font-bold ${textColor}`;
         }
 
-        // --- Prepare data for page-specific callback ---
+        // --- PERSIAPAN DATA UNTUK DIKIRIM KE HALAMAN LAIN ---
         const aggregatedDataForPage = {
             overviewOrganikToday,
             overviewAnorganikToday,
-            overviewUmumToday,
+            overviewResiduToday,
             weeklyTotalData,
             facultyDataAggregates
         };
 
-        // --- Invoke page-specific callback if provided ---
         if (pageSpecificCallback && typeof pageSpecificCallback === 'function') {
             pageSpecificCallback(aggregatedDataForPage);
         }

@@ -106,7 +106,7 @@ async function fetchAndDisplaySummaryStatistics() {
         const calculateCO2Total = (organik, anorganik) => (organik * 1.0) + (anorganik * 0.4);
 
         const fetchMonthlyData = async (startDate, endDate) => {
-            let organikTotal = 0, anorganikTotal = 0, umumTotal = 0, beratTotal = 0;
+            let organikTotal = 0, anorganikTotal = 0, residuTotal = 0, beratTotal = 0;
             const q = query(collection(db, "sampah"), where("timestamp", ">=", startDate), where("timestamp", "<=", endDate));
             const querySnapshot = await getDocs(q);
             querySnapshot.forEach((doc) => {
@@ -114,7 +114,8 @@ async function fetchAndDisplaySummaryStatistics() {
                 const berat = data.berat || 0;
                 if (data.jenis === 'Organik') organikTotal += berat;
                 else if (data.jenis === 'Anorganik') anorganikTotal += berat;
-                else if (data.jenis === 'Umum') umumTotal += berat;
+                // else if (data.jenis === 'Umum') umumTotal += berat;
+                else if (data.jenis === 'Residu') residuTotal += berat;
                 beratTotal += berat;
             });
             return {
@@ -122,7 +123,8 @@ async function fetchAndDisplaySummaryStatistics() {
                 totalBerat: beratTotal,
                 organikTotal,
                 anorganikTotal,
-                umumTotal,
+                // umumTotal,
+                residuTotal,
             };
         };
 
@@ -147,7 +149,8 @@ async function fetchAndDisplaySummaryStatistics() {
             lastMonthTotal: dataBulanLalu.totalBerat,
             activeFacultyCount,
             sortedWasteKg: dataBulanIni.organikTotal + dataBulanIni.anorganikTotal,
-            unsortedWasteKg: dataBulanIni.umumTotal,
+            // unsortedWasteKg: dataBulanIni.umumTotal,
+            unsortedWasteKg: dataBulanIni.residuTotal,
             consistencyData,
         };
 
@@ -199,11 +202,7 @@ async function fetchAndDisplayAchievements(summaryData) {
             status: monthlyReductionKg >= 0 ? 'checked' : 'hourglass'
         },
         {
-            text: `Jenis sampah berhasil dipilah <strong>${sortedWasteKg.toFixed(1)} kg</strong> dan ${unsortedWasteKg.toFixed(1)} kg belum dipilah`,
-            status: 'checked'
-        },
-        {
-            text: `Konsistensi input data: <strong>${consistencyData.count} dari ${consistencyData.totalDays} hari</strong> bulan ini`,
+            text: `Konsistensi input data: <strong>${consistencyData.count} dari ${consistencyData.totalDays} hari</strong> bulan ini (${consistencyData.totalDays > 0 ? Math.round((consistencyData.count / consistencyData.totalDays) * 100) : 0}%)`,
             status: (consistencyData.totalDays > 0 && (consistencyData.count / consistencyData.totalDays) >= 0.7) ? 'checked' : 'hourglass'
         }
     ];
