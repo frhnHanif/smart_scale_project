@@ -7,7 +7,7 @@ let db;
 let unsubscribe;
 
 const facultyTargets = {
-    'FT': 50, 'FK': 45, 'FEB': 55, 'FH': 35, 'FIB': 40, 'FPP': 60
+    'FT': 50, 'FK': 45, 'FEB': 55, 'FH': 35, 'FSM': 40, 'FPP': 60
 };
 const colors = ['#2dd4bf', '#38bdf8', '#a78bfa', '#facc15', '#fb923c'];
 
@@ -103,49 +103,75 @@ function setupFakultasPageListener() {
         }
     }
 
-    const monthlyDates = getPeriodDates('monthly');
-    const queryStartDate = Timestamp.fromDate(monthlyDates.previousStartDate);
+    // --- BATAS WAKTU ---
+    const now = new Date();
+    const endOfToday = new Date(new Date().setHours(23, 59, 59, 999));
+    const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
+    
+    // Kembalikan logika untuk 'kemarin'
+    const startOfYesterday = new Date(new Date(startOfToday).setDate(startOfToday.getDate() - 1));
+
+    // Untuk mingguan (7 hari)
+    const startOfLast7Days = new Date(new Date().setDate(now.getDate() - 6));
+    startOfLast7Days.setHours(0, 0, 0, 0);
+    const startOfPrevious7Days = new Date(new Date(startOfLast7Days).setDate(startOfLast7Days.getDate() - 7));
+
+    // Untuk bulanan (30 hari)
+    const startOfLast30Days = new Date(new Date().setDate(now.getDate() - 29));
+    startOfLast30Days.setHours(0, 0, 0, 0);
+    const startOfPrevious30Days = new Date(new Date(startOfLast30Days).setDate(startOfLast30Days.getDate() - 30));
+
+    // Ambil data yang cukup untuk semua perhitungan
+    const queryStartDate = Timestamp.fromDate(startOfPrevious30Days);
     const q = query(collection(db, "sampah"), where("timestamp", ">=", queryStartDate));
 
     unsubscribe = onSnapshot(q, (querySnapshot) => {
         const aggregatedData = {
-            today: {}, previousDay: {},
-            weekly: {}, previousWeek: {},
-            monthly: {}, previousMonth: {}
+            today: {},
+            previousDay: {}, // <-- DIKEMBALIKAN
+            last7Days: {}, previous7Days: {},
+            last30Days: {}, previous30Days: {}
         };
-        const now = new Date();
-        const todayStart = new Date(now.setHours(0, 0, 0, 0));
-        const yesterdayStart = new Date(todayStart); yesterdayStart.setDate(todayStart.getDate() - 1);
-        const weeklyStart = new Date(todayStart); weeklyStart.setDate(todayStart.getDate() - todayStart.getDay() + (todayStart.getDay() === 0 ? -6 : 1));
-        const lastWeekStart = new Date(weeklyStart); lastWeekStart.setDate(weeklyStart.getDate() - 7);
-        const monthlyStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
-        const lastMonthStart = new Date(monthlyStart); lastMonthStart.setMonth(monthlyStart.getMonth() - 1);
 
         querySnapshot.forEach(doc => {
             const data = doc.data();
-            const docDate = data.timestamp?.toDate ? data.timestamp.toDate() : new Date();
+            if (data.jenis === 'Umum') return;
+            
+            const docDate = data.timestamp?.toDate();
+            if (!docDate) return;
+
             const fakultas = data.fakultas;
             const berat = parseFloat(data.berat) || 0;
-            
             if (!fakultas) return;
 
-            if (!aggregatedData.today[fakultas]) aggregatedData.today[fakultas] = 0;
-            if (!aggregatedData.previousDay[fakultas]) aggregatedData.previousDay[fakultas] = 0;
-            if (!aggregatedData.weekly[fakultas]) aggregatedData.weekly[fakultas] = 0;
-            if (!aggregatedData.previousWeek[fakultas]) aggregatedData.previousWeek[fakultas] = 0;
-            if (!aggregatedData.monthly[fakultas]) aggregatedData.monthly[fakultas] = 0;
-            if (!aggregatedData.previousMonth[fakultas]) aggregatedData.previousMonth[fakultas] = 0;
+            // Inisialisasi
+            Object.keys(aggregatedData).forEach(period => {
+                if (!aggregatedData[period][fakultas]) aggregatedData[period][fakultas] = 0;
+            });
+
+            // --- Logika Agregasi ---
+            if (docDate >= startOfToday && docDate <= endOfToday) {
+                aggregatedData.today[fakultas] += berat;
+            } else if (docDate >= startOfYesterday && docDate < startOfToday) { // <-- DIKEMBALIKAN
+                aggregatedData.previousDay[fakultas] += berat;
+            }
+
+            // Rolling 7 Days
+            if (docDate >= startOfLast7Days && docDate <= endOfToday) {
+                aggregatedData.last7Days[fakultas] += berat;
+            } else if (docDate >= startOfPrevious7Days && docDate < startOfLast7Days) {
+                aggregatedData.previous7Days[fakultas] += berat;
+            }
             
-            if (docDate >= todayStart) { aggregatedData.today[fakultas] += berat; }
-            if (docDate >= yesterdayStart && docDate < todayStart) { aggregatedData.previousDay[fakultas] += berat; }
-            if (docDate >= weeklyStart) { aggregatedData.weekly[fakultas] += berat; }
-            if (docDate >= lastWeekStart && docDate < weeklyStart) { aggregatedData.previousWeek[fakultas] += berat; }
-            if (docDate >= monthlyStart) { aggregatedData.monthly[fakultas] += berat; }
-            if (docDate >= lastMonthStart && docDate < monthlyStart) { aggregatedData.previousMonth[fakultas] += berat; }
+            // Rolling 30 Days
+            if (docDate >= startOfLast30Days && docDate <= endOfToday) {
+                aggregatedData.last30Days[fakultas] += berat;
+            } else if (docDate >= startOfPrevious30Days && docDate < startOfLast30Days) {
+                aggregatedData.previous30Days[fakultas] += berat;
+            }
         });
 
         allAggregatedData = aggregatedData;
-        
         renderAllLeaderboards();
     }, error => {
         console.error("Error fetching all data:", error);
@@ -167,19 +193,19 @@ function renderAllLeaderboards() {
         reductionCurrentData = allAggregatedData.today;
         reductionPreviousData = allAggregatedData.previousDay;
     } else if (reductionFilter === 'weekly') {
-        reductionCurrentData = allAggregatedData.weekly;
-        reductionPreviousData = allAggregatedData.previousWeek;
+        reductionCurrentData = allAggregatedData.last7Days;
+        reductionPreviousData = allAggregatedData.previous7Days;
     } else {
-        reductionCurrentData = allAggregatedData.monthly;
-        reductionPreviousData = allAggregatedData.previousMonth;
+        reductionCurrentData = allAggregatedData.last30Days;
+        reductionPreviousData = allAggregatedData.previous30Days;
     }
     
     if (targetFilter === 'today') {
         targetData = allAggregatedData.today;
     } else if (targetFilter === 'weekly') {
-        targetData = allAggregatedData.weekly;
+        targetData = allAggregatedData.last7Days;
     } else {
-        targetData = allAggregatedData.monthly;
+        targetData = allAggregatedData.last30Days;
     }
 
     renderReductionLeaderboard(reductionCurrentData, reductionPreviousData);
@@ -190,55 +216,88 @@ function renderReductionLeaderboard(currentData, previousData) {
     const container = document.getElementById('reduction-leaderboard-container');
     container.innerHTML = '';
     const combinedData = {};
-    Object.keys(facultyTargets).forEach(fakultas => {
-        const currentTotal = currentData[fakultas] || 0;
-        const previousTotal = previousData[fakultas] || 0;
-        const reduction = previousTotal > 0 ? ((previousTotal - currentTotal) / previousTotal) * 100 : 0;
-        combinedData[fakultas] = { total: currentTotal, reduction: reduction };
-    });
+    Object.keys(facultyTargets)
+        .filter(name => currentData[name] !== undefined || previousData[name] !== undefined) // <-- FILTER SINKRONISASI
+        .forEach(fakultas => {
+            const currentTotal = currentData[fakultas] || 0;
+            const previousTotal = previousData[fakultas] || 0;
+            const reduction = previousTotal > 0 ? ((previousTotal - currentTotal) / previousTotal) * 100 : 0;
+            combinedData[fakultas] = { total: currentTotal, reduction: reduction };
+        });
+
+        // ================== TAMBAHKAN KODE DEBUG DI SINI ==================
+    console.log("--- DEBUG DATA PENGURANGAN ---");
+    console.log("Filter Aktif:", reductionFilter);
+    console.log("Data Periode Saat Ini:", currentData);
+    console.log("Data Periode Pembanding:", previousData);
+    console.log("Hasil Kalkulasi (sebelum disortir):", combinedData);
+    // =================================================================
+
     const sorted = Object.entries(combinedData).map(([name, values]) => ({ name, ...values })).sort((a, b) => b.reduction - a.reduction);
 
-    if (sorted.every(f => f.reduction <= 0)) {
-        container.innerHTML = '<p class="text-center text-gray-500">Belum ada pengurangan sampah untuk periode ini.</p>';
+    // Cek jika tidak ada data sama sekali untuk ditampilkan
+    if (sorted.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-500">Tidak ada data untuk ditampilkan pada periode ini.</p>';
         return;
     }
     
+    // Langsung loop dan tampilkan semua fakultas
     sorted.forEach((faculty, index) => {
-        if (faculty.reduction > 0) {
-            const color = colors[index % colors.length];
-            const progress = Math.min(Math.max(faculty.reduction, 0), 100);
-            const rankDisplay = (idx) => idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `<span class="text-gray-500">${idx + 1}</span>`;
-            
-            container.innerHTML += `
-                <div class="bg-white p-6 rounded-xl shadow-md border-2" style="border-color:${color};">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center">
-                            <span class="w-3 h-3 rounded-full mr-4" style="background-color: ${color};"></span>
-                            <span class="font-bold text-lg text-gray-800">${faculty.name}</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="font-semibold text-teal-600">${faculty.reduction.toFixed(1)} %</span>
-                            <span class="ml-2">${rankDisplay(index)}</span>
-                        </div>
+        const color = colors[index % colors.length];
+        
+        // Menentukan warna teks berdasarkan nilai: hijau untuk positif, merah untuk negatif
+        const reductionValue = faculty.reduction;
+        let textColorClass = 'text-gray-600'; // Warna default untuk nol
+        if (reductionValue > 0) {
+            textColorClass = 'text-green-600';
+        } else if (reductionValue < 0) {
+            textColorClass = 'text-red-600';
+        }
+        
+        // Logika untuk panjang progress bar (hanya untuk nilai > 0)
+        const progress = Math.min(Math.max(reductionValue, 0), 100);
+
+        const rankDisplay = (idx) => idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `<span class="text-gray-500">${idx + 1}</span>`;
+        
+        container.innerHTML += `
+            <div class="bg-white p-6 rounded-xl shadow-md border-2" style="border-color:${color};">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <span class="w-3 h-3 rounded-full mr-4" style="background-color: ${color};"></span>
+                        <span class="font-bold text-lg text-gray-800">${faculty.name}</span>
                     </div>
-                    <div class="mt-3">
-                        <div class="w-full bg-gray-200 rounded-full h-2">
-                            <div class="h-2 rounded-full" style="width: ${progress}%; background-color: #34495e;"></div>
-                        </div>
-                        <div class="flex justify-between text-sm text-gray-500 mt-1">
-                            <span>Pengurangan: ${progress.toFixed(0)}%</span>
-                        </div>
+                    <div class="text-right">
+                        <span class="font-semibold ${textColorClass}">${reductionValue === -Infinity ? 'Naik Drastis' : reductionValue.toFixed(1) + ' %'}</span>
+                        <span class="ml-2">${rankDisplay(index)}</span>
                     </div>
                 </div>
-            `;
-        }
+                
+                <div class="mt-3">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="bg-teal-600 h-2.5 rounded-full" style="width: ${progress}%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>Total Sampah: <strong>${faculty.total.toFixed(1)} kg</strong></span>
+                        <span>Progress Pengurangan: <strong>${progress.toFixed(0)}%</strong></span>
+                    </div>
+                </div>
+            </div>
+        `;
     });
 }
 
 function renderTargetLeaderboard(data) {
     const container = document.getElementById('target-leaderboard-container');
     container.innerHTML = '';
-    const sorted = Object.entries(data).map(([name, values]) => ({ name, total: values, target: facultyTargets[name] || 55 })).sort((a, b) => a.total - b.total);
+    const sorted = Object.keys(facultyTargets)
+        .filter(name => data[name] !== undefined) // <-- FILTER SINKRONISASI DI SINI
+        .map(name => {
+            return { 
+                name: name, 
+                total: data[name] || 0,
+                target: facultyTargets[name] 
+            };
+        }).sort((a, b) => a.total - b.total);
 
     if (sorted.every(f => f.total === 0)) {
         container.innerHTML = '<p class="text-center text-gray-500">Belum ada data timbunan untuk periode ini.</p>';
@@ -264,7 +323,7 @@ function renderTargetLeaderboard(data) {
                 </div>
                 <div class="mt-3">
                     <div class="w-full bg-gray-200 rounded-full h-2">
-                        <div class="h-2 rounded-full" style="width: ${progress}%; background-color: #34495e;"></div>
+                        <div class="bg-teal-600 h-2.5 rounded-full" style="width: ${progress}%"></div>
                     </div>
                     <div class="flex justify-between text-sm text-gray-500 mt-1">
                         <span>Pencapaian: ${progress.toFixed(0)}%</span>

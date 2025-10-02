@@ -15,7 +15,7 @@ let analitikBarChart, trendChart, distributionChart, facultyStackedChart, hourly
 const CHART_COLORS = {
     organik: 'rgba(68, 127, 64, 0.8)', // Green
     anorganik: 'rgba(92, 122, 243, 0.8)', // Blue
-    umum: 'rgba(156, 163, 175, 0.8)', // Gray
+    residu: 'rgba(156, 163, 175, 0.8)', // Gray
 };
 
 // --- FUNGSI INISIALISASI GRAFIK ---
@@ -66,10 +66,10 @@ function initDistributionChart() {
     distributionChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Organik', 'Anorganik', 'Umum'],
+            labels: ['Organik', 'Anorganik', 'Residu'],
             datasets: [{
                 data: [],
-                backgroundColor: [CHART_COLORS.organik, CHART_COLORS.anorganik, CHART_COLORS.umum]
+                backgroundColor: [CHART_COLORS.organik, CHART_COLORS.anorganik, CHART_COLORS.residu]
             }]
         },
         options: { responsive: true, maintainAspectRatio: false }
@@ -146,7 +146,7 @@ function updateAnalitikUI(data) {
 
     // 2. Update Grafik Distribusi Jenis Sampah
     if (distributionChart) {
-        const distributionData = { Organik: 0, Anorganik: 0, Umum: 0 };
+        const distributionData = { Organik: 0, Anorganik: 0, Residu: 0 };
         allDocs.forEach(doc => {
             distributionData[doc.jenis_sampah] = (distributionData[doc.jenis_sampah] || 0) + doc.berat;
         });
@@ -165,7 +165,7 @@ function updateAnalitikUI(data) {
         });
 
         facultyStackedChart.data.labels = faculties;
-        facultyStackedChart.data.datasets = ['Organik', 'Anorganik', 'Umum'].map(jenis => ({
+        facultyStackedChart.data.datasets = ['Organik', 'Anorganik', 'Residu'].map(jenis => ({
             label: jenis,
             data: faculties.map(fakultas => facultyData[fakultas]?.[jenis] || 0),
             backgroundColor: CHART_COLORS[jenis.toLowerCase()],
