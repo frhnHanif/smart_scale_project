@@ -77,8 +77,14 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
     startOfWeek.setDate(diff);
     startOfWeek.setHours(0, 0, 0, 0);
 
-    // Query data mulai dari dua bulan yang lalu untuk mencakup semua perhitungan
-    const firebaseQueryStartDate = Timestamp.fromDate(startOfMonthBeforeLast);
+    // PERBAIKAN: Ambil data untuk 6 bulan terakhir agar cukup untuk semua grafik tren
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5); // 5 bulan lalu + bulan ini = 6 bulan
+    sixMonthsAgo.setDate(1); // Mulai dari tanggal 1
+    sixMonthsAgo.setHours(0,0,0,0);
+    
+    // Gunakan tanggal baru ini untuk kueri
+    const firebaseQueryStartDate = Timestamp.fromDate(sixMonthsAgo);
     const q = query(collection(firestoreDb, "sampah"), where("timestamp", ">=", firebaseQueryStartDate));
 
     return onSnapshot(q, (querySnapshot) => {
@@ -94,14 +100,20 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
         let overviewResiduToday = 0;
         const facultyDataAggregates = {};
 
-
+        const allDocs = []; // <-- BUAT ARRAY KOSONG UNTUK MENAMPUNG DOKUMEN
+        
         querySnapshot.forEach((doc) => {
             const data = doc.data();
+
+
             
             // ✅ PERBAIKAN: Memastikan dokumen memiliki timestamp untuk mencegah error
-            if (!data.timestamp) {
+            if (!data.timestamp || data.jenis === 'Umum') {
                 return; // Lewati dokumen jika tidak ada timestamp
             }
+
+            // Kumpulkan semua dokumen mentah beserta datanya
+            allDocs.push(data); // <-- TAMBAHKAN SETIAP DOKUMEN KE allDocs
 
             const berat = data.berat || 0;
             const docDate = data.timestamp.toDate();
@@ -207,6 +219,7 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
 
         // --- PERSIAPAN DATA UNTUK DIKIRIM KE HALAMAN LAIN ---
         const aggregatedDataForPage = {
+            allDocs,
             overviewOrganikToday,
             overviewAnorganikToday,
             overviewResiduToday,
@@ -215,6 +228,9 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
         };
 
         if (pageSpecificCallback && typeof pageSpecificCallback === 'function') {
+                        // ================== TAMBAHKAN LOG INI ==================
+            console.log("firebaseService: MENGIRIM PAKET DATA KE HALAMAN...", aggregatedDataForPage);
+            // =======================================================
             pageSpecificCallback(aggregatedDataForPage);
         }
 
