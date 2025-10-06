@@ -14,6 +14,7 @@
     {{-- Aset & Library CSS/JS --}}
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -95,7 +96,7 @@
             </div>
             
             {{-- Grafik Tren Volume Sampah 7 Hari --}}
-            <div class="bg-white p-6 rounded-xl shadow-md">
+            <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
                 <h3 class="font-semibold text-xl mb-4">Tren Volume Sampah (7 Hari Terakhir)</h3>
                 <div class="h-80">
                     <canvas id="trendChart"></canvas>

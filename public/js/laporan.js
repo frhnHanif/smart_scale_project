@@ -109,21 +109,29 @@ async function fetchAndDisplaySummaryStatistics() {
             let organikTotal = 0, anorganikTotal = 0, residuTotal = 0, beratTotal = 0;
             const q = query(collection(db, "sampah"), where("timestamp", ">=", startDate), where("timestamp", "<=", endDate));
             const querySnapshot = await getDocs(q);
+            
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
+
+                // --- TAMBAHKAN FILTER INI ---
+                // Abaikan data lama yang jenisnya 'Umum'
+                if (data.jenis === 'Umum') {
+                    return;
+                }
+
                 const berat = data.berat || 0;
                 if (data.jenis === 'Organik') organikTotal += berat;
                 else if (data.jenis === 'Anorganik') anorganikTotal += berat;
-                // else if (data.jenis === 'Umum') umumTotal += berat;
                 else if (data.jenis === 'Residu') residuTotal += berat;
+                
                 beratTotal += berat;
             });
+            
             return {
                 co2: calculateCO2Total(organikTotal, anorganikTotal),
                 totalBerat: beratTotal,
                 organikTotal,
                 anorganikTotal,
-                // umumTotal,
                 residuTotal,
             };
         };

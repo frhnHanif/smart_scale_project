@@ -163,6 +163,16 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
             avgReduction = ((totalBeratBulanLalu - totalBeratBulanIni) / totalBeratBulanLalu) * 100;
         }
 
+        // Hitung total emisi untuk bulan ini
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const docsBulanIni = allDocs.filter(doc => doc.timestamp.toDate() >= firstDayOfMonth);
+        
+        const totalOrganikBulanIni = docsBulanIni.filter(d => d.jenis === 'Organik').reduce((sum, d) => sum + d.berat, 0);
+        const totalAnorganikBulanIni = docsBulanIni.filter(d => d.jenis === 'Anorganik').reduce((sum, d) => sum + d.berat, 0);
+        
+        // Terapkan rumus baru Anda
+        const totalEmisiBulanIni = (totalOrganikBulanIni * 1.0) + (totalAnorganikBulanIni * 0.4);
+
         let targetReductionFromLastMonth = 0;
         if (totalBeratBulanSebelumnyaLagi > 0) {
             targetReductionFromLastMonth = ((totalBeratBulanSebelumnyaLagi - totalBeratBulanLalu) / totalBeratBulanSebelumnyaLagi) * 100;
@@ -224,7 +234,8 @@ export function setupGlobalSampahListener(pageSpecificCallback = null) {
             overviewAnorganikToday,
             overviewResiduToday,
             weeklyTotalData,
-            facultyDataAggregates
+            facultyDataAggregates,
+            totalEmisiBulanIni
         };
 
         if (pageSpecificCallback && typeof pageSpecificCallback === 'function') {

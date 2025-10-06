@@ -1,9 +1,15 @@
 import { initializeFirebase, getFirestoreInstance, setupGlobalSampahListener, updateCurrentDate } from "./firebaseService.js";
 
 // --- KONFIGURASI & VARIABEL GLOBAL ---
+Chart.register(ChartDataLabels); // Daftarkan plugin datalabels secara global
+// Menetapkan pengaturan default untuk semua plugin datalabels
+Chart.defaults.plugins.datalabels.color = '#000';
+Chart.defaults.plugins.datalabels.font = {
+    weight: 'bold'
+};
 const HARGA_ANORGANIK_PER_KG = 2000;
 const FAKTOR_EMISI_CO2E_PER_KG = 0.5;
-const TARGET_BULANAN_KG = 1100;
+const TARGET_BULANAN_KG = 1650;
 let db;
 let analitikBarChart, trendChart, distributionChartWeekly,distributionChartMonthly, facultyStackedChart, hourlyPatternChart,
     monthlyEconomicChart, monthlyEmissionChart, monthlyReductionChart;
@@ -57,6 +63,9 @@ function initTrendChart() {
     });
 }
 
+
+// public/js/analitik.js
+
 function initDistributionChart(ctxId) {
     const ctx = document.getElementById(ctxId)?.getContext('2d');
     if (!ctx) return null; // Kembalikan null jika tidak ditemukan
@@ -72,10 +81,35 @@ function initDistributionChart(ctxId) {
         options: { 
             responsive: true, 
             maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } }
+            // SEMUA plugin harus berada di dalam satu objek 'plugins' ini
+            plugins: { 
+                legend: { 
+                    position: 'bottom', 
+                    labels: { boxWidth: 12 } 
+                },
+                
+                // Konfigurasi datalabels sekarang berada di tempat yang benar
+                datalabels: {
+                    color: '#000', // Warna teks
+                    font: {
+                        weight: 'bold'
+                    },
+                    formatter: (value, context) => {
+                        const total = context.chart.data.datasets[0].data.reduce((sum, val) => sum + val, 0);
+                        const percentage = total > 0 ? (value / total * 100) : 0;
+                        // Hanya tampilkan jika persentase lebih dari 5% agar tidak terlalu ramai
+                        if (percentage < 5) {
+                            return null;
+                        }
+                        return `${value.toFixed(1)} kg\n(${percentage.toFixed(1)}%)`;
+                    }
+                }
+            }
         }
     });
 }
+
+// public/js/analitik.js
 
 function initFacultyStackedChart() {
     const ctx = document.getElementById('facultyStackedChart')?.getContext('2d');
@@ -84,10 +118,39 @@ function initFacultyStackedChart() {
         type: 'bar',
         data: { labels: [], datasets: [] },
         options: {
-            responsive: true, maintainAspectRatio: false,
+            responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 x: { stacked: true },
                 y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Berat (kg)' } }
+            },
+            plugins: {
+                datalabels: {
+                    color: '#000',
+                    font: {
+                        weight: 'bold'
+                    },
+                    // align: 'start',   // <-- HAPUS BARIS INI
+                    // anchor: 'start',  // <-- HAPUS BARIS INI
+                    // offset: 8,        // <-- HAPUS BARIS INI
+                    formatter: (value, context) => {
+                        // Sembunyikan label jika nilainya terlalu kecil (misal: < 5 kg)
+                        if (value < 5) {
+                            return null;
+                        }
+
+                        // Hitung total dari semua segmen di satu batang
+                        const total = context.chart.data.datasets.reduce((sum, dataset) => {
+                            return sum + (dataset.data[context.dataIndex] || 0);
+                        }, 0);
+                        
+                        // Hitung persentase segmen ini
+                        const percentage = total > 0 ? (value / total * 100) : 0;
+                        
+                        // Format teks menjadi dua baris
+                        return `${value.toFixed(1)} kg\n(${percentage.toFixed(0)}%)`;
+                    }
+                }
             }
         }
     });
@@ -188,27 +251,59 @@ function initMonthlyReductionChart() {
     });
 }
 
+// ========================================================================
+// --- FUNGSI BARU: KHUSUS UNTUK UPDATE KARTU STATISTIK (ON-DEMAND) ---
+// ========================================================================
+async function updateStatCardsOnDemand() {
+    console.log("Analitik.js: Memulai fetch on-demand untuk Kartu Statistik...");
+    try {
+        const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        const q = query(collection(db, "sampah"), where("timestamp", ">=", Timestamp.fromDate(firstDayOfMonth)));
+        const querySnapshot = await getDocs(q);
+
+        let totalOrganikBulanIni = 0;
+        let totalAnorganikBulanIni = 0;
+        let totalSampahBulanIni = 0;
+
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.jenis !== 'Umum' && data.timestamp) {
+                if (data.jenis === 'Organik') totalOrganikBulanIni += data.berat;
+                if (data.jenis === 'Anorganik') totalAnorganikBulanIni += data.berat;
+                totalSampahBulanIni += data.berat;
+            }
+        });
+
+        // Terapkan rumus baru untuk Emisi Karbon
+        const totalEmisiKarbon = (totalOrganikBulanIni * 1.0) + (totalAnorganikBulanIni * 0.4);
+
+        // Update semua kartu statistik
+        document.getElementById('potensi-ekonomi-value').textContent = `Rp ${Math.round(totalAnorganikBulanIni * HARGA_ANORGANIK_PER_KG).toLocaleString('id-ID')}`;
+        document.getElementById('emisi-karbon-value').textContent = `${totalEmisiKarbon.toFixed(1)} kg CO₂e`;
+
+        const percentage = Math.min((totalSampahBulanIni / TARGET_BULANAN_KG) * 100, 100);
+        document.getElementById('progres-bar-fill').style.width = `${percentage}%`;
+        document.getElementById('progres-bar-text').textContent = `${Math.round(percentage)}%`;
+        document.getElementById('progres-bar-label').textContent = `${totalSampahBulanIni.toFixed(1)} kg / ${TARGET_BULANAN_KG} kg`;
+        
+        console.log("Analitik.js: Kartu Statistik berhasil diperbarui (on-demand).");
+
+    } catch (error) {
+        console.error("Gagal memperbarui Kartu Statistik:", error);
+    }
+}
 
 
 // --- FUNGSI UTAMA UNTUK UPDATE UI ---
 // public/js/analitik.js
 
 function updateAnalitikUI(data) {
-    console.log("Analitik.js: Menerima paket data:", data);
-
-    if (!data || !data.allDocs) {
-        console.warn("Analitik.js: Menerima data kosong atau tanpa allDocs.");
-        return;
-    }
+    console.log("Analitik.js: Menerima paket data real-time untuk grafik:", data);
+    if (!data || !data.allDocs) { return; }
+    
     const { allDocs, facultyDataAggregates } = data;
-
-    // Filter data 'Umum' di awal. Semua proses di bawah ini akan menggunakan variabel ini.
     const filteredDocs = allDocs.filter(doc => doc.jenis !== 'Umum' && doc.timestamp);
-
-    if (filteredDocs.length === 0) {
-        console.warn("Tidak ada data valid untuk ditampilkan di analitik.");
-        return;
-    }
+    if (filteredDocs.length === 0) { return; }
     
     // ========================================================================
     // --- 0. GRAFIK: ANALISIS HARIAN FAKULTAS (ORIGINAL) ---
@@ -345,9 +440,7 @@ function updateAnalitikUI(data) {
         facultyStackedChart.update();
     }
 
-    // ========================================================================
-    // --- 4. GRAFIK: POLA WAKTU PEMBUANGAN (JAM SIBUK) ---
-    // ========================================================================
+
     // ========================================================================
     // --- 4. GRAFIK: POLA WAKTU PEMBUANGAN (JAM SIBUK) ---
     // ========================================================================
@@ -372,14 +465,27 @@ function updateAnalitikUI(data) {
     // ========================================================================
     // --- 5. KARTU STATISTIK & TARGET (BULAN INI) ---
     // ========================================================================
+
+    const { totalEmisiBulanIni } = data;
+    
     const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
     const docsBulanIni = filteredDocs.filter(doc => doc.timestamp.toDate() >= firstDayOfMonth);
+
+    // Hitung total Organik dan Anorganik secara terpisah
     const totalAnorganikBulanIni = docsBulanIni.filter(d => d.jenis === 'Anorganik').reduce((sum, d) => sum + d.berat, 0);
-    const totalSampahBulanIni = docsBulanIni.reduce((sum, d) => sum + d.berat, 0);
+    const totalOrganikBulanIni = docsBulanIni.filter(d => d.jenis === 'Organik').reduce((sum, d) => sum + d.berat, 0);
 
+    //  Terapkan rumus baru Anda untuk Emisi Karbon
+    // const totalEmisiKarbon = (totalOrganikBulanIni * 1.0) + (totalAnorganikBulanIni * 0.4);
+
+    // Update kartu Potensi Ekonomi (tidak berubah)
     document.getElementById('potensi-ekonomi-value').textContent = `Rp ${Math.round(totalAnorganikBulanIni * HARGA_ANORGANIK_PER_KG).toLocaleString('id-ID')}`;
-    document.getElementById('emisi-karbon-value').textContent = `${(totalSampahBulanIni * FAKTOR_EMISI_CO2E_PER_KG).toFixed(1)} kg CO₂e`;
+    
+    // Update kartu Emisi Karbon dengan hasil perhitungan baru
+    document.getElementById('emisi-karbon-value').textContent = `${totalEmisiBulanIni.toFixed(1)} kg CO₂e`;
 
+    // Update progress bar (menggunakan total dari semua jenis sampah)
+    const totalSampahBulanIni = docsBulanIni.reduce((sum, d) => sum + d.berat, 0);
     const percentage = Math.min((totalSampahBulanIni / TARGET_BULANAN_KG) * 100, 100);
     document.getElementById('progres-bar-fill').style.width = `${percentage}%`;
     document.getElementById('progres-bar-text').textContent = `${Math.round(percentage)}%`;
@@ -389,44 +495,58 @@ function updateAnalitikUI(data) {
     // --- 6. GRAFIK-GRAFIK TREN BULANAN ---
     // ========================================================================
     const monthlyAggregates = {};
-    // Tidak perlu filter 'sixMonthsAgo' lagi, cukup proses semua 'filteredDocs' yang diterima
-    filteredDocs.forEach(doc => {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+    sixMonthsAgo.setHours(0,0,0,0);
+    
+    filteredDocs.filter(doc => doc.timestamp.toDate() >= sixMonthsAgo).forEach(doc => {
         const date = doc.timestamp.toDate();
         const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
         if (!monthlyAggregates[monthKey]) {
-            monthlyAggregates[monthKey] = { totalAnorganik: 0, totalSampah: 0, label: date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) };
+            // Tambahkan properti totalOrganik untuk perhitungan CO2
+            monthlyAggregates[monthKey] = { totalOrganik: 0, totalAnorganik: 0, totalSampah: 0, label: date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) };
         }
+        if (doc.jenis === 'Organik') monthlyAggregates[monthKey].totalOrganik += doc.berat;
         if (doc.jenis === 'Anorganik') monthlyAggregates[monthKey].totalAnorganik += doc.berat;
         monthlyAggregates[monthKey].totalSampah += doc.berat;
     });
 
     const sortedMonthKeys = Object.keys(monthlyAggregates).sort();
     const labels = sortedMonthKeys.map(key => monthlyAggregates[key].label);
+    
+    // Perhitungan Potensi Ekonomi (tidak berubah)
     const economicData = sortedMonthKeys.map(key => Math.round(monthlyAggregates[key].totalAnorganik * HARGA_ANORGANIK_PER_KG));
-    const emissionData = sortedMonthKeys.map(key => (monthlyAggregates[key].totalSampah * FAKTOR_EMISI_CO2E_PER_KG).toFixed(1));
-    const totalKgData = sortedMonthKeys.map(key => monthlyAggregates[key].totalSampah.toFixed(1));
 
+    // PERBAIKAN: Terapkan rumus baru untuk data emisi bulanan
+    const emissionData = sortedMonthKeys.map(key => {
+        const monthData = monthlyAggregates[key];
+        const totalEmisi = (monthData.totalOrganik * 1.0) + (monthData.totalAnorganik * 0.4);
+        return totalEmisi.toFixed(1);
+    });
+    
+    // Perhitungan untuk grafik pengurangan (tidak berubah)
+    const totalKgData = sortedMonthKeys.map(key => monthlyAggregates[key].totalSampah.toFixed(1));
     const reductionData = [];
     for (let i = 0; i < sortedMonthKeys.length; i++) {
-        if (i === 0) {
-            reductionData.push(0);
-        } else {
+        if (i === 0) { reductionData.push(0); } else {
             const current = monthlyAggregates[sortedMonthKeys[i]].totalSampah;
             const prev = monthlyAggregates[sortedMonthKeys[i-1]].totalSampah;
             reductionData.push(prev > 0 ? (((prev - current) / prev) * 100).toFixed(1) : 0);
         }
     }
 
+    // Update semua grafik tren bulanan
     if (monthlyEconomicChart) {
         monthlyEconomicChart.data.labels = labels;
         monthlyEconomicChart.data.datasets[0].data = economicData;
-        monthlyEconomicChart.data.datasets[1].data = economicData; // Tren sama dengan data utama
+        monthlyEconomicChart.data.datasets[1].data = economicData;
         monthlyEconomicChart.update();
     }
     if (monthlyEmissionChart) {
         monthlyEmissionChart.data.labels = labels;
         monthlyEmissionChart.data.datasets[0].data = emissionData;
-        monthlyEmissionChart.data.datasets[1].data = emissionData; // Tren sama dengan data utama
+        monthlyEmissionChart.data.datasets[1].data = emissionData;
         monthlyEmissionChart.update();
     }
     if (monthlyReductionChart) {
