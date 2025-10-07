@@ -1,13 +1,15 @@
 // public/js/laporan.js
 
 import { initializeFirebase, getFirestoreInstance, updateCurrentDate, setupGlobalSampahListener } from "./firebaseService.js";
-import { collection, query, where, getDocs, Timestamp, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { collection, query, where, getDocs, Timestamp, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import * as XLSX from 'https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs'; // For Excel export
 
-let db; // Firestore instance
-let currentReportData = []; // To store data for export
+let db;
+let currentReportData = [];
+let currentSortKey = 'timestamp'; // Default sort key
+let currentSortDirection = 'desc'; // Default sort direction
+let unsubscribeReportListener = null;
 
-// DOM elements for existing report table filters
 let startDateInput;
 let endDateInput;
 let facultyFilterSelect;
@@ -18,22 +20,17 @@ let noDataReportText;
 let reportTable;
 let reportTableBody;
 let exportReportBtn;
+ // 🔹 NEW: dropdown untuk pengurutan
 
-// DOM elements for Summary Statistics
 let co2ReductionSpan;
 let monthlyReductionSpan;
 let monthlyTotalSpan;
-
-// DOM elements for Achievements
 let achievementsListUl;
 
+// ==============================
+// === HELPER FUNCTIONS EXISTING ===
+// ==============================
 
-/**
- * HELPER: Calculates the number of unique faculties that submitted data in a date range.
- * @param {Timestamp} startDate - The start date for the query.
- * @param {Timestamp} endDate - The end date for the query.
- * @returns {Promise<number>} - The count of active faculties.
- */
 async function getActiveFaculties(startDate, endDate) {
     const facultySet = new Set();
     const q = query(
@@ -50,16 +47,10 @@ async function getActiveFaculties(startDate, endDate) {
     return facultySet.size;
 }
 
-/**
- * HELPER: Calculates data input consistency from the start of the current month to today.
- * @returns {Promise<{count: number, totalDays: number}>} - An object containing the count of days with entries
- * and the current day of the month.
- */
 async function calculateInputConsistency() {
     const today = new Date();
-    // Set the start date to the 1st day of the current month
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    startOfMonth.setHours(0, 0, 0, 0); // Ensure it starts from the very beginning of the day
+    startOfMonth.setHours(0, 0, 0, 0);
 
     const firebaseStartDate = Timestamp.fromDate(startOfMonth);
     const firebaseEndDate = Timestamp.fromDate(today);
@@ -73,22 +64,20 @@ async function calculateInputConsistency() {
 
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach(doc => {
-        const docDate = doc.data().timestamp.toDate().toISOString().split('T')[0]; // Format as 'YYYY-MM-DD'
+        const docDate = doc.data().timestamp.toDate().toISOString().split('T')[0];
         daysWithData.add(docDate);
     });
 
-    // Return an object with the count and the total days so far this month
     return {
         count: daysWithData.size,
-        totalDays: today.getDate() // Returns the day of the month (e.g., 10 for Sep 10th)
+        totalDays: today.getDate()
     };
 }
 
+// ==============================
+// === SUMMARY & ACHIEVEMENTS ===
+// ==============================
 
-/**
- * Fetches and displays the main summary statistics AND returns data for achievements.
- * @returns {Promise<object|null>} - An object with calculated data or null on error.
- */
 async function fetchAndDisplaySummaryStatistics() {
     console.log("DEBUG: Fetching Summary Statistics.");
     try {
@@ -109,24 +98,18 @@ async function fetchAndDisplaySummaryStatistics() {
             let organikTotal = 0, anorganikTotal = 0, residuTotal = 0, beratTotal = 0;
             const q = query(collection(db, "sampah"), where("timestamp", ">=", startDate), where("timestamp", "<=", endDate));
             const querySnapshot = await getDocs(q);
-            
+
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-
-                // --- TAMBAHKAN FILTER INI ---
-                // Abaikan data lama yang jenisnya 'Umum'
-                if (data.jenis === 'Umum') {
-                    return;
-                }
+                if (data.jenis === 'Umum') return;
 
                 const berat = data.berat || 0;
                 if (data.jenis === 'Organik') organikTotal += berat;
                 else if (data.jenis === 'Anorganik') anorganikTotal += berat;
                 else if (data.jenis === 'Residu') residuTotal += berat;
-                
                 beratTotal += berat;
             });
-            
+
             return {
                 co2: calculateCO2Total(organikTotal, anorganikTotal),
                 totalBerat: beratTotal,
@@ -150,14 +133,11 @@ async function fetchAndDisplaySummaryStatistics() {
         monthlyReductionSpan.textContent = monthlyReductionKg.toFixed(1);
         monthlyTotalSpan.textContent = dataBulanIni.totalBerat.toFixed(1);
 
-        console.log("DEBUG: Summary Statistics updated.");
-
         return {
             monthlyReductionKg,
             lastMonthTotal: dataBulanLalu.totalBerat,
             activeFacultyCount,
             sortedWasteKg: dataBulanIni.organikTotal + dataBulanIni.anorganikTotal,
-            // unsortedWasteKg: dataBulanIni.umumTotal,
             unsortedWasteKg: dataBulanIni.residuTotal,
             consistencyData,
         };
@@ -171,19 +151,12 @@ async function fetchAndDisplaySummaryStatistics() {
     }
 }
 
-
-/**
- * Displays the "Pencapaian Minggu Ini" based on calculated data.
- * @param {object} summaryData - The data object from fetchAndDisplaySummaryStatistics.
- */
 async function fetchAndDisplayAchievements(summaryData) {
     console.log("DEBUG: Fetching Achievements.");
 
     achievementsListUl.innerHTML = '';
-
     if (!summaryData) {
         achievementsListUl.innerHTML = '<li class="text-center text-gray-500 py-2">Gagal memuat data pencapaian.</li>';
-        console.log("DEBUG: No summary data for achievements.");
         return;
     }
 
@@ -197,48 +170,102 @@ async function fetchAndDisplayAchievements(summaryData) {
     } = summaryData;
 
     const achievementsData = [
-        {
-            text: `Jumlah fakultas aktif bulan ini: <strong>${activeFacultyCount}</strong>`,
-            status: activeFacultyCount > 0 ? 'checked' : 'hourglass'
-        },
-        {
-            text: `Total pengurangan <strong>${monthlyReductionKg.toFixed(1)} kg</strong> sampah dari ${lastMonthTotal.toFixed(1)} kg sampah bulan lalu`,
-            status: 'checked'
-        },
-        {
-            text: 'Target berat sampah tercapai',
-            status: monthlyReductionKg >= 0 ? 'checked' : 'hourglass'
-        },
-        {
-            text: `Konsistensi input data: <strong>${consistencyData.count} dari ${consistencyData.totalDays} hari</strong> bulan ini (${consistencyData.totalDays > 0 ? Math.round((consistencyData.count / consistencyData.totalDays) * 100) : 0}%)`,
-            status: (consistencyData.totalDays > 0 && (consistencyData.count / consistencyData.totalDays) >= 0.7) ? 'checked' : 'hourglass'
-        }
+        { text: `Jumlah fakultas aktif bulan ini: <strong>${activeFacultyCount}</strong>`, status: activeFacultyCount > 0 ? 'checked' : 'hourglass' },
+        { text: `Total pengurangan <strong>${monthlyReductionKg.toFixed(1)} kg</strong> dari ${lastMonthTotal.toFixed(1)} kg`, status: 'checked' },
+        { text: 'Target berat sampah tercapai', status: monthlyReductionKg >= 0 ? 'checked' : 'hourglass' },
+        { text: `Konsistensi input data: <strong>${consistencyData.count} dari ${consistencyData.totalDays} hari</strong>`, status: (consistencyData.totalDays > 0 && (consistencyData.count / consistencyData.totalDays) >= 0.7) ? 'checked' : 'hourglass' }
     ];
 
     achievementsData.forEach(achievement => {
-        let iconSvg = '';
-        if (achievement.status === 'checked') {
-            iconSvg = `<svg class="achievement-icon text-green-500 w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>`;
-        } else {
-            iconSvg = `<svg class="achievement-icon text-yellow-500 w-4 h-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7.55 7.55a.75.75 0 00-.53-.22h-.75a.75.75 0 00-.53.22L4.5 9.55a.75.75 0 00-.22.53v.75a.75.75 0 00.22.53l1.27 1.27a.75.75 0 00.53.22h.75a.75.75 0 00.53-.22l1.27-1.27a.75.75 0 00.22-.53v-.75a.75.75 0 00-.22-.53l-1.27-1.27zm4.9-.53l-1.27-1.27a.75.75 0 00-.53-.22h-.75a.75.75 0 00-.53.22L9.5 7.55a.75.75 0 00-.22.53v.75a.75.75 0 00.22.53l1.27 1.27a.75.75 0 00.53.22h.75a.75.75 0 00.53-.22l1.27-1.27a.75.75 0 00.22-.53v-.75a.75.75 0 00-.22-.53z" clip-rule="evenodd"></path></svg>`;
-        }
-
-        achievementsListUl.innerHTML += `
-            <li class="flex items-center text-gray-700 gap-2 mb-1">
-                ${iconSvg}
-                <span class="text-sm">${achievement.text}</span>
-            </li>
-        `;
+        let icon = achievement.status === 'checked'
+            ? `<svg class="text-green-500 w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586l-1.293-1.293A1 1 0 006.293 9.707l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>`
+            : `<svg class="text-yellow-500 w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16z" clip-rule="evenodd"/></svg>`;
+        achievementsListUl.innerHTML += `<li class="flex items-center gap-2 mb-1">${icon}<span class="text-sm">${achievement.text}</span></li>`;
     });
-    console.log("DEBUG: Achievements updated.");
 }
 
+// ==============================
+// === LAPORAN TABLE SECTION ===
+// ==============================
 
 /**
- * Fetches and displays report data based on filters for the table.
+ * ✨ FUNGSI BARU: Me-render ulang baris tabel berdasarkan data yang ada.
+ * @param {Array} dataToRender Data yang akan ditampilkan di tabel.
  */
+function renderTable(dataToRender) {
+    reportTableBody.innerHTML = ''; // Kosongkan tabel dulu
+    if (dataToRender.length === 0) {
+        return; // Tidak ada yang dirender jika data kosong
+    }
+
+    let tableHTML = '';
+    dataToRender.forEach(rowData => {
+        tableHTML += `
+            <tr class="text-center">
+                <td class="px-4 py-2">${rowData.Tanggal}</td>
+                <td class="px-4 py-2">${rowData.Hari}</td>
+                <td class="px-4 py-2">${rowData.Waktu}</td>
+                <td class="px-4 py-2">${rowData.Fakultas}</td>
+                <td class="px-4 py-2">${rowData['Jenis Sampah']}</td>
+                <td class="px-4 py-2">${rowData['Berat (kg)']}</td>
+            </tr>`;
+    });
+    reportTableBody.innerHTML = tableHTML;
+}
+
+/**
+ * ✨ FUNGSI BARU: Mengupdate ikon sort di header tabel.
+ */
+function updateSortIcons() {
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        const key = header.getAttribute('data-sort-key');
+        const iconSpan = header.querySelector('.sort-icon');
+        if (key === currentSortKey) {
+            iconSpan.classList.add('active');
+            iconSpan.innerHTML = currentSortDirection === 'asc' ? '▲' : '▼';
+        } else {
+            iconSpan.classList.remove('active');
+            iconSpan.innerHTML = ''; // Atau ikon default sort '↕'
+        }
+    });
+}
+
+/**
+ * ✨ FUNGSI BARU: Mengurutkan data yang ada di `currentReportData`
+ */
+function sortAndRenderData() {
+    const sortedData = [...currentReportData].sort((a, b) => {
+        const valA = a[currentSortKey];
+        const valB = b[currentSortKey];
+
+        // Logika sorting berdasarkan tipe data
+        if (currentSortKey === 'timestamp') {
+            // Sort by Date object
+            return currentSortDirection === 'asc' ? valA - valB : valB - valA;
+        } else if (currentSortKey === 'Berat (kg)') {
+            // Sort by number
+            const numA = parseFloat(valA) || 0;
+            const numB = parseFloat(valB) || 0;
+            return currentSortDirection === 'asc' ? numA - numB : numB - numA;
+        } else {
+            // Sort by string
+            return currentSortDirection === 'asc'
+                ? String(valA).localeCompare(String(valB))
+                : String(valB).localeCompare(String(valA));
+        }
+    });
+
+    renderTable(sortedData);
+    updateSortIcons();
+}
+
 async function fetchAndDisplayReportData() {
-    console.log("DEBUG: fetchAndDisplayReportData called (for table report).");
+    console.log("DEBUG: Fetching Report Data.");
+
+        if (unsubscribeReportListener) {
+        console.log("DEBUG: Unsubscribing from previous listener.");
+        unsubscribeReportListener();
+    }
 
     loadingReportText.classList.remove('hidden');
     noDataReportText.classList.add('hidden');
@@ -249,6 +276,7 @@ async function fetchAndDisplayReportData() {
     const startDate = startDateInput.value ? new Date(startDateInput.value) : null;
     const endDate = endDateInput.value ? new Date(endDateInput.value) : null;
     const selectedFaculty = facultyFilterSelect.value;
+    // const sortOrder = sortSelect ? sortSelect.value : "desc"; // 🔹 NEW
 
     if (!startDate || !endDate) {
         alert("Mohon pilih tanggal mulai dan tanggal akhir.");
@@ -264,7 +292,7 @@ async function fetchAndDisplayReportData() {
     if (!db) {
         db = getFirestoreInstance();
         if (!db) {
-            console.error("DEBUG ERROR: Firestore DB is null. Cannot fetch report data.");
+            console.error("Firestore DB null.");
             loadingReportText.classList.add('hidden');
             return;
         }
@@ -274,92 +302,89 @@ async function fetchAndDisplayReportData() {
         collection(db, "sampah"),
         where("timestamp", ">=", firebaseStartDate),
         where("timestamp", "<=", firebaseEndDate),
-        orderBy("timestamp", "asc")
+        orderBy("timestamp") 
     );
 
-    if (selectedFaculty) {
-        q = query(q, where("fakultas", "==", selectedFaculty));
-    }
+    if (selectedFaculty) q = query(q, where("fakultas", "==", selectedFaculty));
 
-    try {
-        const querySnapshot = await getDocs(q);
-        currentReportData = [];
+    unsubscribeReportListener = onSnapshot(q, (querySnapshot) => {
+        console.log("DEBUG: Real-time data received.");
+        currentReportData = []; // Kosongkan data setiap kali ada update
 
         if (querySnapshot.empty) {
             loadingReportText.classList.add('hidden');
             noDataReportText.classList.remove('hidden');
+            reportTable.classList.add('hidden');
+            exportReportBtn.classList.add('hidden');
+            renderTable([]); // Pastikan tabel kosong
             return;
         }
 
         querySnapshot.forEach(doc => {
             const data = doc.data();
             const docDate = data.timestamp?.toDate ? data.timestamp.toDate() : new Date();
-            const formattedDate = docDate.toLocaleDateString('id-ID', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
 
-            const rowData = {
-                Tanggal: formattedDate,
-                Fakultas: data.fakultas || 'N/A',
+            currentReportData.push({
+                'timestamp': docDate,
+                'Tanggal': docDate.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }),
+                'Hari': docDate.toLocaleDateString('id-ID', { weekday: 'long' }),
+                'Waktu': docDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+                'Fakultas': data.fakultas || 'N/A',
                 'Jenis Sampah': data.jenis || 'N/A',
                 'Berat (kg)': (data.berat || 0).toFixed(1)
-            };
-            currentReportData.push(rowData);
-
-            const rowHTML = `
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${rowData.Tanggal}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${rowData.Fakultas}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${rowData['Jenis Sampah']}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${rowData['Berat (kg)']}</td>
-                </tr>
-            `;
-            reportTableBody.innerHTML += rowHTML;
+            });
         });
 
+        // Tampilkan UI setelah data diproses
         loadingReportText.classList.add('hidden');
+        noDataReportText.classList.add('hidden');
         reportTable.classList.remove('hidden');
         exportReportBtn.classList.remove('hidden');
 
-    } catch (error) {
-        console.error("DEBUG ERROR: Failed to fetch report data:", error);
+        // Panggil fungsi sort & render untuk menampilkan data yang baru diterima
+        sortAndRenderData();
+
+    }, (error) => {
+        // Fungsi untuk menangani error dari listener
+        console.error("DEBUG ERROR: Real-time listener failed:", error);
         loadingReportText.classList.add('hidden');
-        reportResultsDiv.innerHTML = '<p class="text-center text-red-500 py-4">Gagal memuat laporan: ' + error.message + '</p>';
-    }
+        reportResultsDiv.innerHTML = `<p class="text-center text-red-500 py-4">Gagal memuat laporan real-time: ${error.message}</p>`;
+    });
 }
 
+// ==============================
+// === EXPORT EXCEL ===
+// ==============================
 
-/**
- * Exports the current report data to an Excel file.
- */
 async function exportReport() {
     if (currentReportData.length === 0) {
         alert("Tidak ada data untuk diexport.");
         return;
     }
+
+   // Export data sesuai dengan urutan saat ini
+    const dataToExport = [...currentReportData].map(item => ({
+        Tanggal: item.Tanggal,
+        Hari: item.Hari,
+        Waktu: item.Waktu,
+        Fakultas: item.Fakultas,
+        'Jenis Sampah': item['Jenis Sampah'],
+        'Berat (kg)': item['Berat (kg)'],
+    }));
+
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(currentReportData);
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
     XLSX.utils.book_append_sheet(wb, ws, "Laporan Sampah");
     XLSX.writeFile(wb, "Laporan_Sampah.xlsx");
 }
 
+// ==============================
+// === INIT PAGE ===
+// ==============================
 
-/**
- * Initializes the Laporan page scripts.
- * @param {object} firebaseConfig - Firebase project configuration.
- */
 export function initLaporanPage(firebaseConfig) {
-    console.log("DEBUG: initLaporanPage called.");
-
     initializeFirebase(firebaseConfig);
     db = getFirestoreInstance();
-
-    if (!db) {
-        console.error("DEBUG ERROR: Firestore DB is not available.");
-        return;
-    }
 
     updateCurrentDate('current-date');
 
@@ -373,23 +398,38 @@ export function initLaporanPage(firebaseConfig) {
     reportTable = reportResultsDiv.querySelector('table');
     reportTableBody = document.getElementById('report-table-body');
     exportReportBtn = document.getElementById('export-report-btn');
+    
 
     co2ReductionSpan = document.getElementById('co2-reduction');
     monthlyReductionSpan = document.getElementById('monthly-reduction');
     monthlyTotalSpan = document.getElementById('monthly-total');
     achievementsListUl = document.getElementById('achievements-list');
 
+    // Default date range
     if (!startDateInput.value) {
         const today = new Date();
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        startDateInput.valueAsDate = firstDayOfMonth;
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        startDateInput.valueAsDate = firstDay;
     }
-    if (!endDateInput.value) {
-        endDateInput.valueAsDate = new Date();
-    }
+    if (!endDateInput.value) endDateInput.valueAsDate = new Date();
 
     generateReportBtn.addEventListener('click', fetchAndDisplayReportData);
     exportReportBtn.addEventListener('click', exportReport);
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', () => {
+            const sortKey = header.getAttribute('data-sort-key');
+            
+            // Jika klik kolom yang sama, balik arah sort
+            if (currentSortKey === sortKey) {
+                currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                // Jika klik kolom baru, set key baru dan reset arah ke 'asc'
+                currentSortKey = sortKey;
+                currentSortDirection = (sortKey === 'timestamp') ? 'desc' : 'asc';
+            }
+            sortAndRenderData(); // Panggil fungsi sort & render
+        });
+    });
 
     const loadInitialData = async () => {
         const summaryData = await fetchAndDisplaySummaryStatistics();
@@ -399,6 +439,4 @@ export function initLaporanPage(firebaseConfig) {
     };
 
     loadInitialData();
-
-    console.log("DEBUG: Laporan page initialized. Initial data fetches initiated.");
 }

@@ -31,6 +31,28 @@
             @apply p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500;
         }
 
+                .sortable-header {
+            cursor: pointer;
+            position: relative;
+            user-select: none; /* Mencegah teks ter-highlight saat diklik */
+        }
+        .sortable-header:hover {
+            background-color: #f0f4f8;
+        }
+        .sort-icon {
+            font-size: 1.2em;
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af; /* gray-400 */
+        }
+        .sort-icon.active {
+            color: #1e293b; /* gray-800 */
+        }
+
+
+
         /* Style for achievement icons - Confirmed w-4 h-4 (16px) */
     </style>
 </head>
@@ -135,14 +157,16 @@
                     <select id="faculty-filter"
                         class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500">
                         <option value="">Semua Fakultas</option>
-                        <option value="Teknik">Teknik</option>
-                        <option value="Kedokteran">Kedokteran</option>
-                        <option value="Ekonomika dan Bisnis">Ekonomika dan Bisnis</option>
-                        <option value="Hukum">Hukum</option>
-                        <option value="Ilmu Budaya">Ilmu Budaya</option>
-                        <option value="Peternakan dan Pertanian">Peternakan dan Pertanian</option>
-                        <option value="Perikanan dan Ilmu Kelautan">Perikanan dan Ilmu Kelautan</option>
-                        <option value="Vokasi">Vokasi</option>
+                        <option value="FT">Teknik</option>
+                        <option value="FK">Kedokteran</option>
+                        <option value="FEB">Ekonomika dan Bisnis</option>
+                        <option value="FH">Hukum</option>
+                        <option value="FIB">Ilmu Budaya</option>
+                        <option value="FPP">Peternakan dan Pertanian</option>
+                        <option value="FPIK">Perikanan dan Ilmu Kelautan</option>
+                        <option value="FKM">Kesehatan Masyarakat</option>
+                        <option value="FSM">Sains dan Matematika</option>
+                        <option value="SV">Vokasi</option>
                     </select>
                 </div>
                 <div class="col-span-1 md:col-span-3 lg:col-span-1 flex justify-end">
@@ -154,29 +178,45 @@
             </div>
         </div>
 
+        {{-- === Hasil Laporan === --}}
         <div class="bg-white p-6 rounded-xl shadow-md mb-8">
-            <h3 class="font-semibold text-2xl" style="color: #447F40;">Hasil Laporan</h3>
-            <p class="text-sm mb-4 text-gray-500">Generate laporan EcoScale</p>
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
+                <div>
+                    <h3 class="font-semibold text-2xl" style="color: #447F40;">Hasil Laporan</h3>
+                    <p class="text-sm mb-2 text-gray-500">Generate laporan EcoScale</p>
+                </div>
+        </div>
+
             <div id="report-results" class="overflow-x-auto">
                 <p id="loading-report" class="text-center text-gray-500 py-4">Memuat data laporan...</p>
-                <p id="no-data-report" class="text-center text-gray-500 py-4 hidden">Tidak ada data laporan untuk
-                    periode ini.</p>
-                <table class="min-w-full divide-y divide-gray-200 hidden">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Tanggal</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Fakultas</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Jenis Sampah</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Berat (kg)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="report-table-body" class="bg-white divide-y divide-gray-200">
-                    </tbody>
-                </table>
+                <p id="no-data-report" class="text-center text-gray-500 py-4 hidden">Tidak ada data laporan untuk periode ini.</p>
+
+        <table class="min-w-full divide-y divide-gray-200 hidden text-s text-center">
+            <thead class="bg-gray-50">
+                <tr>
+                    {{-- 🔧 DIUBAH: Header tabel sekarang bisa diklik untuk sorting --}}
+                    <th data-sort-key="timestamp" class="sortable-header px-4 py-2 font-semibold text-gray-600 uppercase tracking-wider">
+                        Tanggal <span class="sort-icon"></span>
+                    </th>
+                    <th data-sort-key="Hari" class="sortable-header px-4 py-2 font-semibold text-gray-600 uppercase tracking-wider">
+                        Hari <span class="sort-icon"></span>
+                    </th>
+                    <th data-sort-key="Waktu" class="sortable-header px-4 py-2 font-semibold text-gray-600 uppercase tracking-wider">
+                        Waktu <span class="sort-icon"></span>
+                    </th>
+                    <th data-sort-key="Fakultas" class="sortable-header px-4 py-2 font-semibold text-gray-600 uppercase tracking-wider">
+                        Fakultas <span class="sort-icon"></span>
+                    </th>
+                    <th data-sort-key="Jenis Sampah" class="sortable-header px-4 py-2 font-semibold text-gray-600 uppercase tracking-wider">
+                        Jenis Sampah <span class="sort-icon"></span>
+                    </th>
+                    <th data-sort-key="Berat (kg)" class="sortable-header px-4 py-2 font-semibold text-gray-600 uppercase tracking-wider">
+                        Berat (kg) <span class="sort-icon"></span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="report-table-body" class="bg-white divide-y divide-gray-200"></tbody>
+        </table>
             </div>
 
             <div class="mt-6 flex justify-end">
