@@ -107,17 +107,17 @@ function initTypeDistributionChart(ctxId) {
 
 // --- Page-specific UI Update Function (called by firebaseService) ---
 function updateDashboardSpecificUI(data) {
-    // ✅ FIX: Default values are added to prevent NaN errors if data is missing.
+    // Default values untuk mencegah error jika data tidak lengkap
     const {
         overviewOrganikToday = 0,
         overviewAnorganikToday = 0,
         overviewResiduToday = 0,
         weeklyTotalData = [0, 0, 0, 0, 0, 0, 0]
-    } = data || {}; // Use || {} to guard against null/undefined data object
+    } = data || {};
 
-    // 1. Update "Overview Garbage Summary" cards
+    // 1. Update kartu ringkasan "Overview Garbage Summary"
+    // (Logika ini sudah benar, tidak perlu diubah)
     const overviewTotalSampahElem = document.getElementById('total-sampah');
-    // Calculation will now safely produce 0 instead of NaN
     if (overviewTotalSampahElem) overviewTotalSampahElem.textContent = (overviewOrganikToday + overviewAnorganikToday + overviewResiduToday).toFixed(1);
 
     const overviewTotalOrganikElem = document.getElementById('total-organik');
@@ -130,30 +130,38 @@ function updateDashboardSpecificUI(data) {
     if (overviewTotalResiduElem) overviewTotalResiduElem.textContent = overviewResiduToday.toFixed(1);
 
 
-    // 2. Update Weekly Trend Chart
+    // 2. Update Grafik Tren Mingguan
+    // (Logika ini sudah benar, tidak perlu diubah)
     if (weeklyTrendChart) {
         weeklyTrendChart.data.datasets[0].data = weeklyTotalData;
         weeklyTrendChart.update();
     }
 
 
-    // 3. Update Type Distribution Chart (Doughnut)
+    // 3. Update Grafik Distribusi Jenis (Doughnut)
     if (typeDistributionChart) {
-        let hasActualData = overviewOrganikToday > 0 || overviewAnorganikToday > 0 || overviewResiduToday > 0;
+        const hasActualData = overviewOrganikToday > 0 || overviewAnorganikToday > 0 || overviewResiduToday > 0;
 
         if (hasActualData) {
+            // Jika ADA DATA, tampilkan data aktual
             typeDistributionChart.data.datasets[0].data = [overviewOrganikToday, overviewAnorganikToday, overviewResiduToday];
             typeDistributionChart.data.datasets[0].backgroundColor = ['#62B682', '#5C7AF3', '#D35748'];
             typeDistributionChart.data.labels = ['Organik (kg)', 'Anorganik (kg)', 'Residu (kg)'];
             typeDistributionChart.options.plugins.legend.display = true;
-            typeDistributionChart.options.cutout = '80%';
         } else {
-            typeDistributionChart.data.datasets[0].data = [1];
-            typeDistributionChart.data.datasets[0].backgroundColor = ['#e0e0e0'];
-            typeDistributionChart.data.labels = ['No Data Today'];
-            typeDistributionChart.options.plugins.legend.display = true;
-            typeDistributionChart.options.cutout = '0%';
+            // Jika TIDAK ADA DATA, biarkan plugin yang bekerja
+            // Kita hanya perlu mengatur data agar plugin terpicu
+            typeDistributionChart.data.datasets[0].data = [1]; // Data dummy untuk memicu plugin
+            typeDistributionChart.data.datasets[0].backgroundColor = ['#E5E7EB']; // Warna abu-abu netral
+            typeDistributionChart.data.labels = ['No Data Today']; // Label yang dikenali plugin
+            typeDistributionChart.options.plugins.legend.display = false; // Sembunyikan legenda
         }
+
+        // PERUBAHAN PENTING:
+        // Biarkan 'cutout' konsisten agar bentuk donat tidak berubah-ubah.
+        // Plugin akan menggambar teks "No Data Today" di tengah.
+        typeDistributionChart.options.cutout = '80%';
+        
         typeDistributionChart.update();
     }
 }
