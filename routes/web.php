@@ -1,8 +1,29 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\SampahController; // Pastikan ini ada
 
-// Arahkan URL utama langsung ke /dashboard
+/*
+|--------------------------------------------------------------------------
+| Rute API
+|--------------------------------------------------------------------------
+|
+| Rute ini akan dipanggil oleh JavaScript (frontend) kita.
+|
+*/
+
+// Rute ini akan kita ubah untuk Paginasi
+Route::get('/api/sampah-data', [SampahController::class, 'getData']);
+
+// Rute BARU untuk mengambil SEMUA data (tanpa pagination) untuk Ekspor Excel
+Route::get('/api/sampah-export', [SampahController::class, 'exportData']);
+
+
+/*
+|--------------------------------------------------------------------------
+| Rute Halaman (Views)
+|--------------------------------------------------------------------------
+*/
 Route::get('/', function () {
     return redirect('/dashboard');
 });

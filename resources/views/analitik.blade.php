@@ -177,6 +177,19 @@
     {{-- ==================================================================== --}}
     {{-- --- BAGIAN 4: PEMUATAN SKRIP JAVASCRIPT --- --}}
     {{-- ==================================================================== --}}
+{{-- Kita tidak perlu lagi blok window.firebaseConfig --}}
+
+    {{-- <script type="module">
+        import {
+            initAnalitikPage
+        } from "{{ asset('js/analitik.js') }}";
+
+        // Langsung panggil initLaporanPage saat DOM siap,
+        // tanpa perlu mengecek firebaseConfig lagi.
+        document.addEventListener('DOMContentLoaded', function() {
+            initAnalitikPage();
+        });
+    </script> --}}
     <script>window.firebaseConfig = @json(config('services.firebase'));</script>
     <script type="module">
         import { initAnalitikPage } from "{{ asset('js/analitik.js') }}";

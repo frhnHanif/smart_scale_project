@@ -91,9 +91,9 @@
 
         {{-- TODO: Ganti dengan konfigurasi Firebase proyek  --}}
         {{-- Script Js untuk Firebase --}}
-        <script>
+        {{-- <script>
             window.firebaseConfig = @json(config('services.firebase'));
-        </script>
+        </script> --}}
 
         {{-- Script Js khusus Dashboard --}}
         <script type="module" src="{{ asset('js/dashboard.js') }}"></script>

@@ -1,26 +1,59 @@
-import { initializeFirebase, getFirestoreInstance, setupGlobalSampahListener, updateCurrentDate } from "./firebaseService.js";
+// 1. GANTI IMPORT: Hapus Firebase, ganti dengan 'fetchData'
+import { fetchData, updateGlobalStatCards } from "./firebaseService.js";
 
 // --- KONFIGURASI & VARIABEL GLOBAL ---
-Chart.register(ChartDataLabels); // Daftarkan plugin datalabels secara global
-// Menetapkan pengaturan default untuk semua plugin datalabels
-Chart.defaults.plugins.datalabels.color = '#000';
-Chart.defaults.plugins.datalabels.font = {
-    weight: 'bold'
-};
-const HARGA_ANORGANIK_PER_KG = 2000;
-const FAKTOR_EMISI_CO2E_PER_KG = 0.5;
-const TARGET_BULANAN_KG = 1650;
-let db;
-let analitikBarChart, trendChart, distributionChartWeekly,distributionChartMonthly, facultyStackedChart, hourlyPatternChart,
-    monthlyEconomicChart, monthlyEmissionChart, monthlyReductionChart;
+// Chart.js dan plugin sudah di-load di Blade, jadi tidak perlu import
+// (Asumsi ChartDataLabels sudah di-load via CDN di blade)
+// Chart.register(ChartDataLabels); // Baris ini mungkin tidak diperlukan jika sudah di-load di blade
+// Chart.defaults.plugins.datalabels.color = '#000';
+// Chart.defaults.plugins.datalabels.font = { weight: 'bold' };
 
+// Konstanta (SAMA)
+const HARGA_ANORGANIK_PER_KG = 2000;
+const FAKTOR_EMISI_CO2E_PER_KG = 0.5; // (Kita akan pakai rumus 1.0 org + 0.4 anorg)
+const TARGET_BULANAN_KG = 1650;
 const CHART_COLORS = {
     organik: 'rgba(68, 127, 64, 0.8)',
     anorganik: 'rgba(92, 122, 243, 0.8)',
     residu: 'rgba(156, 163, 175, 0.8)',
 };
+const validFacultyTargets = { // Definisikan di sini
+    'FT': 50,
+    'FK': 45,
+    'FEB': 55,
+    'FH': 35,
+    'FSM': 40,
+    'FPP': 60
+};
+
+// Variabel Global (SAMA)
+let analitikBarChart, trendChart, distributionChartWeekly, distributionChartMonthly, facultyStackedChart, hourlyPatternChart,
+    monthlyEconomicChart, monthlyEmissionChart, monthlyReductionChart;
+
+// 2. HAPUS 'db'
+
+// 3. TAMBAHKAN FUNGSI UTILITAS: (Diambil dari firebaseService.js sebelumnya)
+/**
+ * Memperbarui elemen teks dengan tanggal hari ini dalam format Bahasa Indonesia.
+ */
+function updateCurrentDate(elementId) {
+    const dateElement = document.getElementById(elementId);
+    if (dateElement) {
+        const today = new Date();
+        const options = {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        };
+        dateElement.textContent = today.toLocaleDateString('id-ID', options);
+    }
+}
+
 
 // --- FUNGSI INISIALISASI GRAFIK ---
+// (SEMUA FUNGSI init...Chart() DARI FILE ASLI ANDA
+// TETAP SAMA. KITA ASUMSIKAN MEREKA SUDAH BENAR)
 
 function initAnalitikBarChart(ctxId) {
     const ctx = document.getElementById(ctxId)?.getContext('2d');
@@ -40,12 +73,28 @@ function initAnalitikBarChart(ctxId) {
             }]
         },
         options: {
-            responsive: true, maintainAspectRatio: false,
+            responsive: true,
+            maintainAspectRatio: false,
             scales: {
-                x: { title: { display: true, text: 'Fakultas' } },
-                y: { beginAtZero: true, title: { display: true, text: 'Nilai' } }
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Fakultas'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Nilai'
+                    }
+                }
             },
-            plugins: { legend: { position: 'top' } }
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            }
         }
     });
 }
@@ -55,16 +104,31 @@ function initTrendChart() {
     if (!ctx) return;
     trendChart = new Chart(ctx, {
         type: 'line',
-        data: { labels: [], datasets: [{ label: 'Total Berat Sampah (kg)', data: [], tension: 0.1, borderColor: '#447F40', fill: true }] },
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Total Berat Sampah (kg)',
+                data: [],
+                tension: 0.1,
+                borderColor: '#447F40',
+                fill: true
+            }]
+        },
         options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true, title: { display: true, text: 'Berat (kg)' } } }
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Berat (kg)'
+                    }
+                }
+            }
         }
     });
 }
-
-
-// public/js/analitik.js
 
 function initDistributionChart(ctxId) {
     const ctx = document.getElementById(ctxId)?.getContext('2d');
@@ -73,31 +137,29 @@ function initDistributionChart(ctxId) {
         type: 'doughnut',
         data: {
             labels: ['Organik', 'Anorganik', 'Residu'],
-            datasets: [{ 
+            datasets: [{
                 data: [1, 1, 1], // Data awal agar terlihat
                 backgroundColor: [CHART_COLORS.organik, CHART_COLORS.anorganik, CHART_COLORS.residu]
             }]
         },
-        options: { 
-            responsive: true, 
+        options: {
+            responsive: true,
             maintainAspectRatio: false,
-            // SEMUA plugin harus berada di dalam satu objek 'plugins' ini
-            plugins: { 
-                legend: { 
-                    position: 'bottom', 
-                    labels: { boxWidth: 12 } 
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12
+                    }
                 },
-                
-                // Konfigurasi datalabels sekarang berada di tempat yang benar
                 datalabels: {
-                    color: '#000', // Warna teks
+                    color: '#000',
                     font: {
                         weight: 'bold'
                     },
                     formatter: (value, context) => {
                         const total = context.chart.data.datasets[0].data.reduce((sum, val) => sum + val, 0);
                         const percentage = total > 0 ? (value / total * 100) : 0;
-                        // Hanya tampilkan jika persentase lebih dari 5% agar tidak terlalu ramai
                         if (percentage < 5) {
                             return null;
                         }
@@ -109,20 +171,30 @@ function initDistributionChart(ctxId) {
     });
 }
 
-// public/js/analitik.js
-
 function initFacultyStackedChart() {
     const ctx = document.getElementById('facultyStackedChart')?.getContext('2d');
     if (!ctx) return;
     facultyStackedChart = new Chart(ctx, {
         type: 'bar',
-        data: { labels: [], datasets: [] },
+        data: {
+            labels: [],
+            datasets: []
+        },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { stacked: true },
-                y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Berat (kg)' } }
+                x: {
+                    stacked: true
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Berat (kg)'
+                    }
+                }
             },
             plugins: {
                 datalabels: {
@@ -130,24 +202,14 @@ function initFacultyStackedChart() {
                     font: {
                         weight: 'bold'
                     },
-                    // align: 'start',   // <-- HAPUS BARIS INI
-                    // anchor: 'start',  // <-- HAPUS BARIS INI
-                    // offset: 8,        // <-- HAPUS BARIS INI
                     formatter: (value, context) => {
-                        // Sembunyikan label jika nilainya terlalu kecil (misal: < 5 kg)
                         if (value < 5) {
                             return null;
                         }
-
-                        // Hitung total dari semua segmen di satu batang
                         const total = context.chart.data.datasets.reduce((sum, dataset) => {
                             return sum + (dataset.data[context.dataIndex] || 0);
                         }, 0);
-                        
-                        // Hitung persentase segmen ini
                         const percentage = total > 0 ? (value / total * 100) : 0;
-                        
-                        // Format teks menjadi dua baris
                         return `${value.toFixed(1)} kg\n(${percentage.toFixed(0)}%)`;
                     }
                 }
@@ -162,429 +224,489 @@ function initHourlyPatternChart() {
     hourlyPatternChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`),
-            datasets: [{ label: 'Jumlah Entri Sampah', data: Array(24).fill(0), backgroundColor: '#F59E0B' }]
+            labels: Array.from({
+                length: 24
+            }, (_, i) => `${i.toString().padStart(2, '0')}:00`),
+            datasets: [{
+                label: 'Jumlah Entri Sampah',
+                data: Array(24).fill(0),
+                backgroundColor: '#F59E0B'
+            }]
         },
         options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true, title: { display: true, text: 'Jumlah Entri' } } }
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Jumlah Entri'
+                    }
+                }
+            }
         }
     });
 }
 
-// --- FUNGSI INISIALISASI UNTUK 3 GRAFIK TREN ---
 function initMonthlyEconomicChart() {
     const ctx = document.getElementById('monthlyEconomicChart')?.getContext('2d');
     if (!ctx) return;
     monthlyEconomicChart = new Chart(ctx, {
-        type: 'bar', // Tipe utama adalah bar
+        type: 'bar',
         data: {
             labels: [],
-            datasets: [
-                {
-                    label: 'Potensi Ekonomi (Rp)',
-                    data: [],
-                    backgroundColor: 'rgba(22, 163, 74, 0.7)',
-                    order: 1 // Pastikan bar di belakang
-                },
-                {
-                    label: 'Tren Ekonomi',
-                    data: [],
-                    borderColor: 'rgba(16, 115, 53, 1)', // Warna hijau lebih gelap
-                    type: 'line', // Tipe dataset ini adalah garis
-                    order: 0, // Pastikan garis di depan
-                    tension: 0.3
-                }
-            ]
+            datasets: [{
+                label: 'Potensi Ekonomi (Rp)',
+                data: [],
+                backgroundColor: 'rgba(22, 163, 74, 0.7)',
+                order: 1
+            }, {
+                label: 'Tren Ekonomi',
+                data: [],
+                borderColor: 'rgba(16, 115, 53, 1)',
+                type: 'line',
+                order: 0,
+                tension: 0.3
+            }]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Rupiah (Rp)' } } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Rupiah (Rp)'
+                    }
+                }
+            }
+        }
     });
 }
 
 function initMonthlyEmissionChart() {
-    const ctx = document.getElementById('monthlyEmissionChart')?.getContext('2d');
+    const ctx = document.getElementById('monthlyEmissionChart')?.getContext('d');
     if (!ctx) return;
     monthlyEmissionChart = new Chart(ctx, {
-        type: 'bar', // Tipe utama adalah bar
+        type: 'bar',
         data: {
             labels: [],
-            datasets: [
-                {
-                    label: 'Emisi Karbon (kg CO₂e)',
-                    data: [],
-                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                    order: 1
-                },
-                {
-                    label: 'Tren Emisi',
-                    data: [],
-                    borderColor: 'rgba(37, 99, 235, 1)', // Warna biru lebih gelap
-                    type: 'line',
-                    order: 0,
-                    tension: 0.3
-                }
-            ]
+            datasets: [{
+                label: 'Emisi Karbon (kg CO₂e)',
+                data: [],
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                order: 1
+            }, {
+                label: 'Tren Emisi',
+                data: [],
+                borderColor: 'rgba(37, 99, 235, 1)',
+                type: 'line',
+                order: 0,
+                tension: 0.3
+            }]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'kg CO₂e' } } } }
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    title: {
+                        display: true,
+                        text: 'kg CO₂e'
+                    }
+                }
+            }
+        }
     });
 }
 
 function initMonthlyReductionChart() {
-    const ctx = document.getElementById('monthlyReductionChart')?.getContext('2d');
+    const ctx = document.getElementById('monthlyReductionChart')?.getContext('d');
     if (!ctx) return;
     monthlyReductionChart = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: [],
-            datasets: [
-                { label: 'Total Sampah (kg)', backgroundColor: 'rgba(156, 163, 175, 0.6)', yAxisID: 'y' },
-                { label: 'Pengurangan (%)', borderColor: 'rgba(239, 68, 68, 1)', type: 'line', yAxisID: 'y1' }
-            ]
+            datasets: [{
+                label: 'Total Sampah (kg)',
+                backgroundColor: 'rgba(156, 163, 175, 0.6)',
+                yAxisID: 'y'
+            }, {
+                label: 'Pengurangan (%)',
+                borderColor: 'rgba(239, 68, 68, 1)',
+                type: 'line',
+                yAxisID: 'y1'
+            }]
         },
         options: {
-            responsive: true, maintainAspectRatio: false,
+            responsive: true,
+            maintainAspectRatio: false,
             scales: {
-                y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Berat (kg)' } },
-                y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Pengurangan (%)' }, grid: { drawOnChartArea: false } }
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Berat (kg)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Pengurangan (%)'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    }
+                }
             }
         }
     });
 }
 
-// ========================================================================
-// --- FUNGSI BARU: KHUSUS UNTUK UPDATE KARTU STATISTIK (ON-DEMAND) ---
-// ========================================================================
-async function updateStatCardsOnDemand() {
-    console.log("Analitik.js: Memulai fetch on-demand untuk Kartu Statistik...");
-    try {
-        const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-        const q = query(collection(db, "sampah"), where("timestamp", ">=", Timestamp.fromDate(firstDayOfMonth)));
-        const querySnapshot = await getDocs(q);
+// 4. HAPUS FUNGSI 'updateStatCardsOnDemand'
 
-        let totalOrganikBulanIni = 0;
-        let totalAnorganikBulanIni = 0;
-        let totalSampahBulanIni = 0;
+// 5. FUNGSI BARU: Untuk memproses SEMUA data analitik
+function processDataForAnalitik(data) {
+    console.log("Analitik.js: Memulai pemrosesan data...");
 
-        querySnapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.jenis !== 'Umum' && data.timestamp) {
-                if (data.jenis === 'Organik') totalOrganikBulanIni += data.berat;
-                if (data.jenis === 'Anorganik') totalAnorganikBulanIni += data.berat;
-                totalSampahBulanIni += data.berat;
-            }
-        });
-
-        // Terapkan rumus baru untuk Emisi Karbon
-        const totalEmisiKarbon = (totalOrganikBulanIni * 1.0) + (totalAnorganikBulanIni * 0.4);
-
-        // Update semua kartu statistik
-        document.getElementById('potensi-ekonomi-value').textContent = `Rp ${Math.round(totalAnorganikBulanIni * HARGA_ANORGANIK_PER_KG).toLocaleString('id-ID')}`;
-        document.getElementById('emisi-karbon-value').textContent = `${totalEmisiKarbon.toFixed(1)} kg CO₂e`;
-
-        const percentage = Math.min((totalSampahBulanIni / TARGET_BULANAN_KG) * 100, 100);
-        document.getElementById('progres-bar-fill').style.width = `${percentage}%`;
-        document.getElementById('progres-bar-text').textContent = `${Math.round(percentage)}%`;
-        document.getElementById('progres-bar-label').textContent = `${totalSampahBulanIni.toFixed(1)} kg / ${TARGET_BULANAN_KG} kg`;
-        
-        console.log("Analitik.js: Kartu Statistik berhasil diperbarui (on-demand).");
-
-    } catch (error) {
-        console.error("Gagal memperbarui Kartu Statistik:", error);
+    // Filter data mentah (SAMA)
+    const filteredDocs = data.filter(doc => doc.jenis !== 'Umum' && doc.timestamp);
+    if (filteredDocs.length === 0) {
+        console.warn("Tidak ada data valid untuk diproses.");
+        return null;
     }
-}
 
+    // --- Siapkan Batas Waktu ---
+    const now = new Date();
+    const startOfToday = new Date(new Date().setHours(0, 0, 0, 0));
+    const startOfYesterday = new Date(new Date(startOfToday).setDate(startOfToday.getDate() - 1));
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayOfWeek = new Date(now);
+    firstDayOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+    firstDayOfWeek.setHours(0, 0, 0, 0);
+    const sevenDaysAgo = new Date(new Date().setDate(now.getDate() - 6)); // 7 hari termasuk hari ini
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+    const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 29)); // 30 hari termasuk hari ini
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
 
-// --- FUNGSI UTAMA UNTUK UPDATE UI ---
-// public/js/analitik.js
-
-function updateAnalitikUI(data) {
-    console.log("Analitik.js: Menerima paket data real-time untuk grafik:", data);
-    if (!data || !data.allDocs) { return; }
-    
-    const { allDocs, facultyDataAggregates } = data;
-    const filteredDocs = allDocs.filter(doc => doc.jenis !== 'Umum' && doc.timestamp);
-    if (filteredDocs.length === 0) { return; }
-    
-    // ========================================================================
-    // --- 0. GRAFIK: ANALISIS HARIAN FAKULTAS (ORIGINAL) ---
-    // ========================================================================
-        if (analitikBarChart) {
-            const todayTotals = {};
-            const yesterdayTotals = {};
-
-            const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
-            const startOfYesterday = new Date(new Date(startOfToday).setDate(startOfToday.getDate() - 1));
-
-            filteredDocs.forEach(doc => {
-                const docDate = doc.timestamp.toDate();
-                if (doc.fakultas) {
-                    if (docDate >= startOfToday) {
-                        todayTotals[doc.fakultas] = (todayTotals[doc.fakultas] || 0) + doc.berat;
-                    } else if (docDate >= startOfYesterday && docDate < startOfToday) {
-                        yesterdayTotals[doc.fakultas] = (yesterdayTotals[doc.fakultas] || 0) + doc.berat;
-                    }
-                }
-            });
-
-            const facultyNames = [...new Set([...Object.keys(todayTotals), ...Object.keys(yesterdayTotals)])].sort();
-            
-            const sampahHariIniData = facultyNames.map(name => todayTotals[name] || 0);
-            const penguranganPercentageData = facultyNames.map(name => {
-                const today = todayTotals[name] || 0;
-                const yesterday = yesterdayTotals[name] || 0;
-                return yesterday > 0 ? (((yesterday - today) / yesterday) * 100).toFixed(1) : (today > 0 ? -Infinity : 0);
-            });
-
-            analitikBarChart.data.labels = facultyNames;
-            analitikBarChart.data.datasets[0].data = sampahHariIniData;
-            analitikBarChart.data.datasets[1].data = penguranganPercentageData;
-            analitikBarChart.update();
+    // --- Siapkan Variabel Hasil ---
+    const results = {
+        analitikBarChart: {
+            labels: [],
+            sampahHariIniData: [],
+            penguranganPercentageData: []
+        },
+        trendChart: {
+            labels: [],
+            data: []
+        },
+        distributionChartWeekly: [0, 0, 0], // Org, Anorg, Res
+        distributionChartMonthly: [0, 0, 0], // Org, Anorg, Res
+        facultyStackedChart: {
+            labels: [],
+            datasets: []
+        },
+        hourlyPatternChart: Array(24).fill(0),
+        statCards: {
+            potensiEkonomi: 0,
+            emisiKarbon: 0,
+            progressPercentage: 0,
+            progressLabel: ""
+        },
+        monthlyTrends: {
+            labels: [],
+            economicData: [],
+            emissionData: [],
+            totalKgData: [],
+            reductionData: []
         }
-    
-    // ========================================================================
+    };
+
+    // --- 0. GRAFIK: ANALISIS HARIAN FAKULTAS ---
+    const todayTotals = {};
+    const yesterdayTotals = {};
+    filteredDocs.forEach(doc => {
+        const docDate = doc.timestamp; // Sudah jadi objek Date
+        if (doc.fakultas) {
+            if (docDate >= startOfToday) {
+                todayTotals[doc.fakultas] = (todayTotals[doc.fakultas] || 0) + doc.berat;
+            } else if (docDate >= startOfYesterday && docDate < startOfToday) {
+                yesterdayTotals[doc.fakultas] = (yesterdayTotals[doc.fakultas] || 0) + doc.berat;
+            }
+        }
+    });
+    const facultyNames = [...new Set([...Object.keys(todayTotals), ...Object.keys(yesterdayTotals)])].sort();
+    results.analitikBarChart.labels = facultyNames;
+    results.analitikBarChart.sampahHariIniData = facultyNames.map(name => todayTotals[name] || 0);
+    results.analitikBarChart.penguranganPercentageData = facultyNames.map(name => {
+        const today = todayTotals[name] || 0;
+        const yesterday = yesterdayTotals[name] || 0;
+        return yesterday > 0 ? (((yesterday - today) / yesterday) * 100) : (today > 0 ? -Infinity : 0);
+    });
+
     // --- 1. GRAFIK: TREN VOLUME SAMPAH (7 HARI TERAKHIR) ---
-    // ========================================================================
-    if (trendChart) {
-        // Langkah 1: Buat template untuk 7 hari terakhir dengan nilai awal 0
-        const trendData = {};
-        const labels = [];
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(date.getDate() - i);
-            const formattedDate = date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
-            labels.push(formattedDate);
-            trendData[formattedDate] = 0;
+    const trendData = {};
+    for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const formattedDate = date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short'
+        });
+        results.trendChart.labels.push(formattedDate);
+        trendData[formattedDate] = 0;
+    }
+    filteredDocs.filter(doc => doc.timestamp >= sevenDaysAgo).forEach(doc => {
+        const dateKey = doc.timestamp.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short'
+        });
+        if (trendData.hasOwnProperty(dateKey)) {
+            trendData[dateKey] += doc.berat;
         }
+    });
+    results.trendChart.data = Object.values(trendData);
 
-        // Langkah 2: Filter data dari Firestore seperti sebelumnya
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        
-        filteredDocs
-            .filter(doc => doc.timestamp.toDate() > sevenDaysAgo)
-            .forEach(doc => {
-                const dateKey = doc.timestamp.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
-                // Langkah 3: Isi template dengan data nyata jika ada
-                if (trendData.hasOwnProperty(dateKey)) {
-                    trendData[dateKey] += doc.berat;
-                }
-            });
+    // --- 2. GRAFIK: DISTRIBUSI JENIS SAMPAH (MINGGUAN & BULANAN) ---
+    const monthlyDataDist = {
+        Organik: 0,
+        Anorganik: 0,
+        Residu: 0
+    };
+    const weeklyDataDist = {
+        Organik: 0,
+        Anorganik: 0,
+        Residu: 0
+    };
+    filteredDocs.forEach(doc => {
+        if (doc.timestamp >= firstDayOfMonth) {
+            if (monthlyDataDist.hasOwnProperty(doc.jenis)) monthlyDataDist[doc.jenis] += doc.berat;
+        }
+        if (doc.timestamp >= firstDayOfWeek) {
+            if (weeklyDataDist.hasOwnProperty(doc.jenis)) weeklyDataDist[doc.jenis] += doc.berat;
+        }
+    });
+    results.distributionChartMonthly = Object.values(monthlyDataDist);
+    results.distributionChartWeekly = Object.values(weeklyDataDist);
 
-        // Langkah 4: Update grafik dengan data yang sudah lengkap (7 hari)
-        trendChart.data.labels = labels;
-        trendChart.data.datasets[0].data = Object.values(trendData);
-        trendChart.update();
-    }
+    // --- 3. GRAFIK: KOMPARASI KOMPOSISI SAMPAH PER FAKULTAS (ALL TIME) ---
+    const faculties = Object.keys(validFacultyTargets);
+    const facultyData = {};
+    filteredDocs.filter(doc => faculties.includes(doc.fakultas)).forEach(doc => {
+        if (!facultyData[doc.fakultas]) facultyData[doc.fakultas] = {};
+        facultyData[doc.fakultas][doc.jenis] = (facultyData[doc.fakultas][doc.jenis] || 0) + doc.berat;
+    });
+    results.facultyStackedChart.labels = faculties;
+    results.facultyStackedChart.datasets = ['Organik', 'Anorganik', 'Residu'].map(jenis => ({
+        label: jenis,
+        data: faculties.map(fakultas => facultyData[fakultas]?.[jenis] || 0),
+        backgroundColor: CHART_COLORS[jenis.toLowerCase()],
+    }));
 
-    // ========================================================================
-    // ---2. GRAFIK: DISTRIBUSI JENIS SAMPAH (MINGGUAN & BULANAN) ---
-    // ========================================================================
-    if (distributionChartWeekly && distributionChartMonthly) {
-        // 1. Siapkan periode
-        const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-        const now = new Date();
-        const firstDayOfWeek = new Date(now.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1)));
-        firstDayOfWeek.setHours(0,0,0,0);
+    // --- 4. GRAFIK: POLA WAKTU PEMBUANGAN (30 HARI TERAKHIR) ---
+    const hourlyData = Array(24).fill(0);
+    filteredDocs.filter(doc => doc.timestamp >= thirtyDaysAgo).forEach(doc => {
+        const hour = doc.timestamp.getHours();
+        hourlyData[hour]++;
+    });
+    results.hourlyPatternChart = hourlyData;
 
-        // 2. Filter data untuk masing-masing periode
-        const docsBulanIni = filteredDocs.filter(doc => doc.timestamp.toDate() >= firstDayOfMonth);
-        const docsMingguIni = filteredDocs.filter(doc => doc.timestamp.toDate() >= firstDayOfWeek);
-
-        // 3. Kalkulasi data untuk grafik bulanan
-        const monthlyData = { Organik: 0, Anorganik: 0, Residu: 0 };
-        docsBulanIni.forEach(doc => { if (monthlyData.hasOwnProperty(doc.jenis)) monthlyData[doc.jenis] += doc.berat; });
-        
-        // 4. Kalkulasi data untuk grafik mingguan
-        const weeklyData = { Organik: 0, Anorganik: 0, Residu: 0 };
-        docsMingguIni.forEach(doc => { if (weeklyData.hasOwnProperty(doc.jenis)) weeklyData[doc.jenis] += doc.berat; });
-
-        // 5. Update kedua grafik
-        distributionChartMonthly.data.datasets[0].data = Object.values(monthlyData);
-        distributionChartMonthly.update();
-        
-        distributionChartWeekly.data.datasets[0].data = Object.values(weeklyData);
-        distributionChartWeekly.update();
-    }
-
-    // ========================================================================
-    // --- 3. GRAFIK: KOMPARASI KOMPOSISI SAMPAH PER FAKULTAS ---
-    // ========================================================================
-    if (facultyStackedChart) {
-        // PERBAIKAN DIMULAI DI SINI
-        // 1. Ambil daftar fakultas yang valid dari objek facultyTargets (yang ada di file fakultas.js)
-        // Kita definisikan ulang di sini agar modul ini mandiri
-        const validFacultyTargets = {
-            'FT': 50, 'FK': 45, 'FEB': 55, 'FH': 35, 'FSM': 40, 'FPP': 60
-        };
-        const faculties = Object.keys(validFacultyTargets);
-
-        // 2. Filter data mentah agar HANYA berisi fakultas yang valid
-        const relevantDocs = filteredDocs.filter(doc => faculties.includes(doc.fakultas));
-
-        // 3. Proses data yang sudah bersih tersebut
-        const facultyData = {}; 
-        relevantDocs.forEach(doc => {
-            if (doc.fakultas) {
-                if (!facultyData[doc.fakultas]) facultyData[doc.fakultas] = {};
-                facultyData[doc.fakultas][doc.jenis] = (facultyData[doc.fakultas][doc.jenis] || 0) + doc.berat;
-            }
-        });
-        
-        // 4. Update grafik menggunakan daftar fakultas yang sudah valid
-        facultyStackedChart.data.labels = faculties;
-        facultyStackedChart.data.datasets = ['Organik', 'Anorganik', 'Residu'].map(jenis => ({
-            label: jenis,
-            data: faculties.map(fakultas => facultyData[fakultas]?.[jenis] || 0),
-            backgroundColor: CHART_COLORS[jenis.toLowerCase()],
-        }));
-        facultyStackedChart.update();
-    }
-
-
-    // ========================================================================
-    // --- 4. GRAFIK: POLA WAKTU PEMBUANGAN (JAM SIBUK) ---
-    // ========================================================================
-    if (hourlyPatternChart) {
-        const hourlyData = Array(24).fill(0);
-        
-        // Buat variabel baru untuk data 30 hari terakhir
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const recentDocs = filteredDocs.filter(doc => doc.timestamp.toDate() > thirtyDaysAgo);
-
-        // Gunakan data yang sudah difilter 30 hari
-        recentDocs.forEach(doc => {
-            const hour = doc.timestamp.toDate().getHours();
-            hourlyData[hour]++;
-        });
-        
-        hourlyPatternChart.data.datasets[0].data = hourlyData;
-        hourlyPatternChart.update();
-    }
-    
-    // ========================================================================
     // --- 5. KARTU STATISTIK & TARGET (BULAN INI) ---
-    // ========================================================================
-
-    const { totalEmisiBulanIni } = data;
-    
-    const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const docsBulanIni = filteredDocs.filter(doc => doc.timestamp.toDate() >= firstDayOfMonth);
-
-    // Hitung total Organik dan Anorganik secara terpisah
+    const docsBulanIni = filteredDocs.filter(doc => doc.timestamp >= firstDayOfMonth);
     const totalAnorganikBulanIni = docsBulanIni.filter(d => d.jenis === 'Anorganik').reduce((sum, d) => sum + d.berat, 0);
     const totalOrganikBulanIni = docsBulanIni.filter(d => d.jenis === 'Organik').reduce((sum, d) => sum + d.berat, 0);
-
-    //  Terapkan rumus baru Anda untuk Emisi Karbon
-    // const totalEmisiKarbon = (totalOrganikBulanIni * 1.0) + (totalAnorganikBulanIni * 0.4);
-
-    // Update kartu Potensi Ekonomi (tidak berubah)
-    document.getElementById('potensi-ekonomi-value').textContent = `Rp ${Math.round(totalAnorganikBulanIni * HARGA_ANORGANIK_PER_KG).toLocaleString('id-ID')}`;
-    
-    // Update kartu Emisi Karbon dengan hasil perhitungan baru
-    document.getElementById('emisi-karbon-value').textContent = `${totalEmisiBulanIni.toFixed(1)} kg CO₂e`;
-
-    // Update progress bar (menggunakan total dari semua jenis sampah)
     const totalSampahBulanIni = docsBulanIni.reduce((sum, d) => sum + d.berat, 0);
+    // Rumus emisi baru
+    const totalEmisiKarbon = (totalOrganikBulanIni * 1.0) + (totalAnorganikBulanIni * 0.4);
+    results.statCards.potensiEkonomi = Math.round(totalAnorganikBulanIni * HARGA_ANORGANIK_PER_KG);
+    results.statCards.emisiKarbon = totalEmisiKarbon;
     const percentage = Math.min((totalSampahBulanIni / TARGET_BULANAN_KG) * 100, 100);
-    document.getElementById('progres-bar-fill').style.width = `${percentage}%`;
-    document.getElementById('progres-bar-text').textContent = `${Math.round(percentage)}%`;
-    document.getElementById('progres-bar-label').textContent = `${totalSampahBulanIni.toFixed(1)} kg / ${TARGET_BULANAN_KG} kg`;
+    results.statCards.progressPercentage = percentage;
+    results.statCards.progressLabel = `${totalSampahBulanIni.toFixed(1)} kg / ${TARGET_BULANAN_KG} kg`;
 
-    // ========================================================================
-    // --- 6. GRAFIK-GRAFIK TREN BULANAN ---
-    // ========================================================================
+    // --- 6. GRAFIK-GRAFIK TREN BULANAN (6 BULAN TERAKHIR) ---
     const monthlyAggregates = {};
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
-    sixMonthsAgo.setDate(1);
-    sixMonthsAgo.setHours(0,0,0,0);
-    
-    filteredDocs.filter(doc => doc.timestamp.toDate() >= sixMonthsAgo).forEach(doc => {
-        const date = doc.timestamp.toDate();
+    filteredDocs.filter(doc => doc.timestamp >= sixMonthsAgo).forEach(doc => {
+        const date = doc.timestamp;
         const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
         if (!monthlyAggregates[monthKey]) {
-            // Tambahkan properti totalOrganik untuk perhitungan CO2
-            monthlyAggregates[monthKey] = { totalOrganik: 0, totalAnorganik: 0, totalSampah: 0, label: date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) };
+            monthlyAggregates[monthKey] = {
+                totalOrganik: 0,
+                totalAnorganik: 0,
+                totalSampah: 0,
+                label: date.toLocaleDateString('id-ID', {
+                    month: 'short',
+                    year: 'numeric'
+                })
+            };
         }
         if (doc.jenis === 'Organik') monthlyAggregates[monthKey].totalOrganik += doc.berat;
         if (doc.jenis === 'Anorganik') monthlyAggregates[monthKey].totalAnorganik += doc.berat;
         monthlyAggregates[monthKey].totalSampah += doc.berat;
     });
-
     const sortedMonthKeys = Object.keys(monthlyAggregates).sort();
-    const labels = sortedMonthKeys.map(key => monthlyAggregates[key].label);
-    
-    // Perhitungan Potensi Ekonomi (tidak berubah)
-    const economicData = sortedMonthKeys.map(key => Math.round(monthlyAggregates[key].totalAnorganik * HARGA_ANORGANIK_PER_KG));
-
-    // PERBAIKAN: Terapkan rumus baru untuk data emisi bulanan
-    const emissionData = sortedMonthKeys.map(key => {
+    results.monthlyTrends.labels = sortedMonthKeys.map(key => monthlyAggregates[key].label);
+    results.monthlyTrends.economicData = sortedMonthKeys.map(key => Math.round(monthlyAggregates[key].totalAnorganik * HARGA_ANORGANIK_PER_KG));
+    results.monthlyTrends.emissionData = sortedMonthKeys.map(key => {
         const monthData = monthlyAggregates[key];
-        const totalEmisi = (monthData.totalOrganik * 1.0) + (monthData.totalAnorganik * 0.4);
-        return totalEmisi.toFixed(1);
+        return (monthData.totalOrganik * 1.0) + (monthData.totalAnorganik * 0.4);
     });
-    
-    // Perhitungan untuk grafik pengurangan (tidak berubah)
-    const totalKgData = sortedMonthKeys.map(key => monthlyAggregates[key].totalSampah.toFixed(1));
-    const reductionData = [];
+    results.monthlyTrends.totalKgData = sortedMonthKeys.map(key => monthlyAggregates[key].totalSampah);
     for (let i = 0; i < sortedMonthKeys.length; i++) {
-        if (i === 0) { reductionData.push(0); } else {
+        if (i === 0) {
+            results.monthlyTrends.reductionData.push(0);
+        } else {
             const current = monthlyAggregates[sortedMonthKeys[i]].totalSampah;
-            const prev = monthlyAggregates[sortedMonthKeys[i-1]].totalSampah;
-            reductionData.push(prev > 0 ? (((prev - current) / prev) * 100).toFixed(1) : 0);
+            const prev = monthlyAggregates[sortedMonthKeys[i - 1]].totalSampah;
+            results.monthlyTrends.reductionData.push(prev > 0 ? (((prev - current) / prev) * 100) : 0);
         }
     }
 
-    // Update semua grafik tren bulanan
+    console.log("Analitik.js: Pemrosesan data selesai.");
+    return results;
+}
+
+
+// --- 6. FUNGSI UTAMA UNTUK UPDATE UI ---
+// (Fungsi ini sekarang JAUH LEBIH SEDERHANA, hanya mem-plot data)
+function updateAnalitikUI(data) {
+    if (!data) {
+        console.warn("Analitik.js: Tidak ada data terproses untuk ditampilkan.");
+        return;
+    }
+    console.log("Analitik.js: Memulai update UI dengan data terproses...", data);
+
+    // 0. GRAFIK: ANALISIS HARIAN FAKULTAS
+    if (analitikBarChart) {
+        analitikBarChart.data.labels = data.analitikBarChart.labels;
+        analitikBarChart.data.datasets[0].data = data.analitikBarChart.sampahHariIniData.map(d => d.toFixed(1));
+        analitikBarChart.data.datasets[1].data = data.analitikBarChart.penguranganPercentageData.map(d => d.toFixed(1));
+        analitikBarChart.update();
+    }
+
+    // 1. GRAFIK: TREN VOLUME SAMPAH (7 HARI TERAKHIR)
+    if (trendChart) {
+        trendChart.data.labels = data.trendChart.labels;
+        trendChart.data.datasets[0].data = data.trendChart.data.map(d => d.toFixed(1));
+        trendChart.update();
+    }
+
+    // 2. GRAFIK: DISTRIBUSI JENIS SAMPAH
+    if (distributionChartMonthly) {
+        distributionChartMonthly.data.datasets[0].data = data.distributionChartMonthly.map(d => d.toFixed(1));
+        distributionChartMonthly.update();
+    }
+    if (distributionChartWeekly) {
+        distributionChartWeekly.data.datasets[0].data = data.distributionChartWeekly.map(d => d.toFixed(1));
+        distributionChartWeekly.update();
+    }
+
+    // 3. GRAFIK: KOMPARASI KOMPOSISI SAMPAH PER FAKULTAS
+    if (facultyStackedChart) {
+        facultyStackedChart.data.labels = data.facultyStackedChart.labels;
+        // Perlu map lagi untuk toFixed(1) di dalam data
+        facultyStackedChart.data.datasets = data.facultyStackedChart.datasets.map(dataset => ({
+            ...dataset,
+            data: dataset.data.map(d => d.toFixed(1))
+        }));
+        facultyStackedChart.update();
+    }
+
+    // 4. GRAFIK: POLA WAKTU PEMBUANGAN
+    if (hourlyPatternChart) {
+        hourlyPatternChart.data.datasets[0].data = data.hourlyPatternChart;
+        hourlyPatternChart.update();
+    }
+
+    // 5. KARTU STATISTIK & TARGET (BULAN INI)
+    document.getElementById('potensi-ekonomi-value').textContent = `Rp ${data.statCards.potensiEkonomi.toLocaleString('id-ID')}`;
+    document.getElementById('emisi-karbon-value').textContent = `${data.statCards.emisiKarbon.toFixed(1)} kg CO₂e`;
+    document.getElementById('progres-bar-fill').style.width = `${data.statCards.progressPercentage.toFixed(0)}%`;
+    document.getElementById('progres-bar-text').textContent = `${data.statCards.progressPercentage.toFixed(0)}%`;
+    document.getElementById('progres-bar-label').textContent = data.statCards.progressLabel;
+
+    // 6. GRAFIK-GRAFIK TREN BULANAN
     if (monthlyEconomicChart) {
-        monthlyEconomicChart.data.labels = labels;
-        monthlyEconomicChart.data.datasets[0].data = economicData;
-        monthlyEconomicChart.data.datasets[1].data = economicData;
+        monthlyEconomicChart.data.labels = data.monthlyTrends.labels;
+        monthlyEconomicChart.data.datasets[0].data = data.monthlyTrends.economicData;
+        monthlyEconomicChart.data.datasets[1].data = data.monthlyTrends.economicData; // Tren line
         monthlyEconomicChart.update();
     }
     if (monthlyEmissionChart) {
-        monthlyEmissionChart.data.labels = labels;
-        monthlyEmissionChart.data.datasets[0].data = emissionData;
-        monthlyEmissionChart.data.datasets[1].data = emissionData;
+        monthlyEmissionChart.data.labels = data.monthlyTrends.labels;
+        monthlyEmissionChart.data.datasets[0].data = data.monthlyTrends.emissionData.map(d => d.toFixed(1));
+        monthlyEmissionChart.data.datasets[1].data = data.monthlyTrends.emissionData.map(d => d.toFixed(1)); // Tren line
         monthlyEmissionChart.update();
     }
     if (monthlyReductionChart) {
-        monthlyReductionChart.data.labels = labels;
-        monthlyReductionChart.data.datasets[0].data = totalKgData;
-        monthlyReductionChart.data.datasets[1].data = reductionData;
+        monthlyReductionChart.data.labels = data.monthlyTrends.labels;
+        monthlyReductionChart.data.datasets[0].data = data.monthlyTrends.totalKgData.map(d => d.toFixed(1));
+        monthlyReductionChart.data.datasets[1].data = data.monthlyTrends.reductionData.map(d => d.toFixed(1));
         monthlyReductionChart.update();
+    }
+
+    console.log("Analitik.js: Update UI Selesai.");
+}
+
+
+// 7. FUNGSI BARU: Untuk memuat data
+async function loadAnalitikData() {
+    console.log("Analitik.js: Memulai pengambilan data...");
+    try {
+        // Panggil fetchData, hasilnya adalah objek pagination
+        const response = await fetchData();
+        // Ambil array data dari properti 'data'
+        const allData = response.data;
+
+        // 2. Proses semua data
+        const processedData = processDataForAnalitik(allData);
+
+        // 3. Update UI dengan data yang sudah matang
+        updateAnalitikUI(processedData);
+
+    } catch (error) {
+        console.error("Gagal memuat data analitik:", error);
     }
 }
 
-// --- FUNGSI INISIALISASI UTAMA HALAMAN ---
-export function initAnalitikPage(firebaseConfig) {
+
+// --- FUNGSI INISIALISASI UTAMA HALAMAN (DIUBAH) ---
+export function initAnalitikPage() { // Hapus 'firebaseConfig'
     console.log("Analitik.js: Menggunakan arsitektur modular yang benar.");
 
-    initializeFirebase(firebaseConfig);
-    db = getFirestoreInstance();
+    // HAPUS KODE FIREBASE
+    // initializeFirebase(firebaseConfig);
+    // db = getFirestoreInstance();
+    // if (!db) {
+    //     console.error("Firestore DB tidak tersedia.");
+    //     return;
+    // }
 
-    if (!db) {
-        console.error("Firestore DB tidak tersedia.");
-        return;
-    }
-    
+    // Panggil fungsi utilitas tanggal
     updateCurrentDate('current-date');
-
-    // Inisialisasi SEMUA kerangka grafik
+    updateGlobalStatCards();
+    // Inisialisasi SEMUA kerangka grafik (SAMA)
     initAnalitikBarChart('analitikBarChart');
     initTrendChart();
-        distributionChartWeekly = initDistributionChart('distributionChartWeekly');
+    distributionChartWeekly = initDistributionChart('distributionChartWeekly');
     distributionChartMonthly = initDistributionChart('distributionChartMonthly');
     initFacultyStackedChart();
     initHourlyPatternChart();
     initMonthlyEconomicChart();
     initMonthlyEmissionChart();
     initMonthlyReductionChart();
-    
-    
-    
-    // Setup listener global, sama seperti halaman lainnya
-    setupGlobalSampahListener(updateAnalitikUI);
-    console.log("Global listener untuk analitik telah diatur.");
+
+    // HAPUS 'setupGlobalSampahListener'
+    // GANTI DENGAN 'loadAnalitikData'
+    loadAnalitikData();
+
+    console.log("Inisialisasi halaman analitik selesai.");
 }

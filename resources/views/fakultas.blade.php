@@ -90,21 +90,17 @@
         </div>
     </div>
 
-    <script>
-        window.firebaseConfig = @json(config('services.firebase'));
-    </script>
+    {{-- Kita tidak perlu lagi blok window.firebaseConfig --}}
 
     <script type="module">
-        import { initFakultasPage } from "{{ asset('js/fakultas.js') }}";
+        import {
+            initFakultasPage
+        } from "{{ asset('js/fakultas.js') }}";
 
+        // Langsung panggil initLaporanPage saat DOM siap,
+        // tanpa perlu mengecek firebaseConfig lagi.
         document.addEventListener('DOMContentLoaded', function() {
-            const firebaseConfig = window.firebaseConfig;
-
-            if (firebaseConfig) {
-                initFakultasPage(firebaseConfig);
-            } else {
-                console.error("Firebase configuration not found. Cannot initialize Fakultas page.");
-            }
+            initFakultasPage();
         });
     </script>
 </body>
