@@ -2,17 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Sampah; // Menggunakan Model 'Sampah'
+use App\Models\Sampah;
+use App\Services\MQTTService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log; // Tambahkan ini untuk logging
-use Illuminate\Support\Facades\Validator; // Tambahkan ini untuk validasi
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class SampahController extends Controller
 {
-    /**
-     * PERUBAHAN: Fungsi ini sekarang menangani pagination.
-     * Ia akan mengambil parameter 'page' dan 'per_page' dari URL.
-     */
+    protected $mqttService;
+
+    public function __construct()
+    {
+        $this->mqttService = new MQTTService();
+    }
+
     public function getData(Request $request)
     {
         // 1. Buat query dasar (SAMA)
@@ -70,50 +74,138 @@ class SampahController extends Controller
         // 4. Kembalikan data JSON lengkap
         return response()->json($data);
     }
-    public function receiveDataFromESP32(Request $request)
+
+
+    public function getLatestData()
     {
-        // 1. Definisikan API Key yang diharapkan (sama seperti di PHP Anda)
-        $expectedApiKey = "210601"; //
-
-        // 2. Cek API Key yang dikirim
-        $receivedApiKey = $request->input('api_key'); // Ambil 'api_key' dari data POST
-
-        if (!$receivedApiKey || $receivedApiKey !== $expectedApiKey) {
-            Log::warning('Unauthorized API access attempt from ESP32.'); // Catat percobaan akses tidak sah
-            return response()->json(['message' => 'Unauthorized'], 403); // Kirim respons error
-        }
-
-        // 3. Validasi Data yang Masuk
-        // Ini memastikan data yang dikirim ESP32 sesuai format
-        $validator = Validator::make($request->all(), [
-            'berat'    => 'required|numeric', // 'berat' wajib ada dan harus angka
-            'fakultas' => 'required|string|max:100', // 'fakultas' wajib, string, maks 100 char
-            'jenis'    => 'required|string|max:50',  // 'jenis' wajib, string, maks 50 char
-        ]);
-
-        // Jika validasi gagal
-        if ($validator->fails()) {
-            Log::error('Invalid data received from ESP32:', $validator->errors()->toArray()); // Catat error validasi
-            return response()->json(['message' => 'Data tidak valid.', 'errors' => $validator->errors()], 400); // Kirim respons error
-        }
-
-        // 4. Simpan Data ke Database menggunakan Model Eloquent
         try {
-            $sampah = new Sampah(); // Buat instance model baru
-            $sampah->berat = $request->input('berat');
-            $sampah->fakultas = $request->input('fakultas');
-            $sampah->jenis = $request->input('jenis');
-            // 'timestamp' akan diisi otomatis oleh database (sesuai schema Anda)
-            
-            $sampah->save(); // Simpan ke tabel 'sampah'
+            $latestData = Sampah::with([])
+                ->latest('timestamp')
+                ->first();
 
-            Log::info('Data received successfully from ESP32:', $request->all()); // Catat data yang berhasil disimpan
-            return response()->json(['message' => 'Data berhasil disimpan!'], 201); // Kirim respons sukses (201 Created)
+            return response()->json([
+                'success' => true,
+                'data' => $latestData,
+                'timestamp' => now()->toISOString()
+            ]);
 
         } catch (\Exception $e) {
-            // Tangani jika ada error saat menyimpan ke database
-            Log::error('Failed to save data from ESP32:', ['error' => $e->getMessage()]); // Catat error database
-            return response()->json(['message' => 'Gagal menyimpan data ke database.'], 500); // Kirim respons error server
+            Log::error('Error getting latest data: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch latest data'
+            ], 500);
+        }
+    }
+
+    /**
+     * REAL-TIME: Get dashboard statistics
+     */
+    public function getDashboardStats()
+    {
+        try {
+            $stats = [
+                'total_berat' => Sampah::sum('berat'),
+                'total_records' => Sampah::count(),
+                'fakultas_count' => Sampah::distinct('fakultas')->count('fakultas'),
+                'jenis_count' => Sampah::distinct('jenis')->count('jenis'),
+                'latest_timestamp' => Sampah::max('timestamp')
+            ];
+
+            return response()->json([
+                'success' => true,
+                'stats' => $stats
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error getting dashboard stats: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch dashboard statistics'
+            ], 500);
+        }
+    }
+
+    /**
+     * MODIFIED: Receive data from ESP32 with MQTT notification
+     */
+    public function receiveDataFromESP32(Request $request)
+    {
+        $expectedApiKey = "210601";
+        $receivedApiKey = $request->input('api_key');
+
+        if (!$receivedApiKey || $receivedApiKey !== $expectedApiKey) {
+            Log::warning('Unauthorized API access attempt from ESP32.');
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'berat'    => 'required|numeric',
+            'fakultas' => 'required|string|max:100',
+            'jenis'    => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            Log::error('Invalid data received from ESP32:', $validator->errors()->toArray());
+            return response()->json([
+                'message' => 'Data tidak valid.', 
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        try {
+            // Save to database
+            $sampah = Sampah::create([
+                'berat' => $request->input('berat'),
+                'fakultas' => $request->input('fakultas'),
+                'jenis' => $request->input('jenis'),
+                'timestamp' => now()
+            ]);
+
+            Log::info('Data received successfully from ESP32:', $request->all());
+
+            // ========== MQTT NOTIFICATION ==========
+            $mqttData = [
+                'type' => 'new_data',
+                'id' => $sampah->id,
+                'berat' => $sampah->berat,
+                'fakultas' => $sampah->fakultas,
+                'jenis' => $sampah->jenis,
+                'timestamp' => $sampah->timestamp->toISOString()
+            ];
+
+            $this->mqttService->publish('undip/scale/new', json_encode($mqttData));
+            // ========== END MQTT ==========
+
+            return response()->json([
+                'message' => 'Data berhasil disimpan!',
+                'id' => $sampah->id
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to save data from ESP32: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Gagal menyimpan data ke database.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get MQTT configuration for frontend
+     */
+    public function getMqttConfig()
+    {
+        try {
+            $config = $this->mqttService->getFrontendConfig();
+            return response()->json([
+                'success' => true,
+                'config' => $config
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'config' => []
+            ]);
         }
     }
 }

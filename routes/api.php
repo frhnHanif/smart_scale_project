@@ -2,26 +2,24 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\SampahController; // Pastikan ini ada
+use App\Http\Controllers\SampahController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Rute-rute ini biasanya stateless dan tidak menggunakan session state.
-| Prefix '/api' ditambahkan secara otomatis oleh Laravel.
-|
-*/
-
-// Rute BARU untuk menerima data sampah dari ESP32 via POST
+// Existing routes
 Route::post('/receive-sampah', [SampahController::class, 'receiveDataFromESP32']);
 
-// Rute yang sudah ada untuk mengambil data (opsional, bisa dipindah ke sini juga)
-// Route::get('/sampah-data', [SampahController::class, 'getData']);
-// Route::get('/sampah-export', [SampahController::class, 'exportData']);
+// NEW REAL-TIME ROUTES
+Route::get('/latest-sampah', [SampahController::class, 'getLatestData']);
+Route::get('/dashboard-stats', [SampahController::class, 'getDashboardStats']);
+Route::get('/mqtt-config', [SampahController::class, 'getMqttConfig']);
 
-// Contoh rute default (jika ada)
-// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-//     return $request->user();
-// });
+// Existing data routes
+Route::get('/sampah-data', [SampahController::class, 'getData']);
+Route::get('/sampah-export', [SampahController::class, 'exportData']);
+
+Route::get('/test-connection', function() {
+    return response()->json([
+        'message' => 'API is working!',
+        'timestamp' => now(),
+        'ip' => request()->ip()
+    ]);
+});

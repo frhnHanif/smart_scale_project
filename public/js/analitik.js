@@ -1,23 +1,14 @@
-// 1. GANTI IMPORT: Hapus Firebase, ganti dengan 'fetchData'
 import { fetchData, updateGlobalStatCards } from "./firebaseService.js";
 
-// --- KONFIGURASI & VARIABEL GLOBAL ---
-// Chart.js dan plugin sudah di-load di Blade, jadi tidak perlu import
-// (Asumsi ChartDataLabels sudah di-load via CDN di blade)
-// Chart.register(ChartDataLabels); // Baris ini mungkin tidak diperlukan jika sudah di-load di blade
-// Chart.defaults.plugins.datalabels.color = '#000';
-// Chart.defaults.plugins.datalabels.font = { weight: 'bold' };
-
-// Konstanta (SAMA)
 const HARGA_ANORGANIK_PER_KG = 2000;
-const FAKTOR_EMISI_CO2E_PER_KG = 0.5; // (Kita akan pakai rumus 1.0 org + 0.4 anorg)
+const FAKTOR_EMISI_CO2E_PER_KG = 0.5;
 const TARGET_BULANAN_KG = 1650;
 const CHART_COLORS = {
     organik: 'rgba(68, 127, 64, 0.8)',
     anorganik: 'rgba(92, 122, 243, 0.8)',
     residu: 'rgba(156, 163, 175, 0.8)',
 };
-const validFacultyTargets = { // Definisikan di sini
+const validFacultyTargets = {
     'FT': 50,
     'FK': 45,
     'FEB': 55,
@@ -26,16 +17,9 @@ const validFacultyTargets = { // Definisikan di sini
     'FPP': 60
 };
 
-// Variabel Global (SAMA)
 let analitikBarChart, trendChart, distributionChartWeekly, distributionChartMonthly, facultyStackedChart, hourlyPatternChart,
     monthlyEconomicChart, monthlyEmissionChart, monthlyReductionChart;
 
-// 2. HAPUS 'db'
-
-// 3. TAMBAHKAN FUNGSI UTILITAS: (Diambil dari firebaseService.js sebelumnya)
-/**
- * Memperbarui elemen teks dengan tanggal hari ini dalam format Bahasa Indonesia.
- */
 function updateCurrentDate(elementId) {
     const dateElement = document.getElementById(elementId);
     if (dateElement) {
@@ -49,11 +33,6 @@ function updateCurrentDate(elementId) {
         dateElement.textContent = today.toLocaleDateString('id-ID', options);
     }
 }
-
-
-// --- FUNGSI INISIALISASI GRAFIK ---
-// (SEMUA FUNGSI init...Chart() DARI FILE ASLI ANDA
-// TETAP SAMA. KITA ASUMSIKAN MEREKA SUDAH BENAR)
 
 function initAnalitikBarChart(ctxId) {
     const ctx = document.getElementById(ctxId)?.getContext('2d');
@@ -132,13 +111,13 @@ function initTrendChart() {
 
 function initDistributionChart(ctxId) {
     const ctx = document.getElementById(ctxId)?.getContext('2d');
-    if (!ctx) return null; // Kembalikan null jika tidak ditemukan
+    if (!ctx) return null;
     return new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['Organik', 'Anorganik', 'Residu'],
             datasets: [{
-                data: [1, 1, 1], // Data awal agar terlihat
+                data: [1, 1, 1],
                 backgroundColor: [CHART_COLORS.organik, CHART_COLORS.anorganik, CHART_COLORS.residu]
             }]
         },

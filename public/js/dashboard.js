@@ -5,7 +5,10 @@ import { fetchData, updateGlobalStatCards } from "./firebaseService.js";
 let weeklyTrendChart;
 let typeDistributionChart;
 
-// 2. FUNGSI UTILITAS BARU (Pengganti dari firebaseService.js)
+// 2. MQTT Dashboard Instance - HANYA INI YANG DITAMBAH
+let mqttDashboard = null;
+
+// 3. FUNGSI UTILITAS BARU (Pengganti dari firebaseService.js)
 /**
  * Memperbarui elemen teks dengan tanggal hari ini dalam format Bahasa Indonesia.
  */
@@ -98,10 +101,10 @@ function initTypeDistributionChart(ctxId) {
         typeDistributionChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Organik (kg)', 'Anorganik (kg)', 'Residu (kg)'],
+                labels: ['Organik (kg)', 'Anorganik (kg)', 'Residu (kg)', 'Botol (kg)', 'Kertas (kg)'],
                 datasets: [{
-                    data: [1, 1, 1],
-                    backgroundColor: ['#62B682', '#5C7AF3', '#D35748'],
+                    data: [1, 1, 1, 1, 1],
+                    backgroundColor: ['#62B682', '#5C7AF3', '#D35748', '#F5C14E', '#8B5CF6'],
                     hoverOffset: 4,
                     borderColor: '#ffffff',
                     borderWidth: 2
@@ -133,12 +136,14 @@ function updateDashboardSpecificUI(data) {
         overviewOrganikToday = 0,
         overviewAnorganikToday = 0,
         overviewResiduToday = 0,
+        overviewBotolToday = 0,
+        overviewKertasToday = 0,
         weeklyTotalData = [0, 0, 0, 0, 0, 0, 0]
     } = data || {};
 
     // 1. Update kartu ringkasan "Overview Garbage Summary"
     const overviewTotalSampahElem = document.getElementById('total-sampah');
-    if (overviewTotalSampahElem) overviewTotalSampahElem.textContent = (overviewOrganikToday + overviewAnorganikToday + overviewResiduToday).toFixed(1);
+    if (overviewTotalSampahElem) overviewTotalSampahElem.textContent = (overviewOrganikToday + overviewAnorganikToday + overviewResiduToday + overviewBotolToday + overviewKertasToday).toFixed(1);
 
     const overviewTotalOrganikElem = document.getElementById('total-organik');
     if (overviewTotalOrganikElem) overviewTotalOrganikElem.textContent = overviewOrganikToday.toFixed(1);
@@ -148,6 +153,12 @@ function updateDashboardSpecificUI(data) {
 
     const overviewTotalResiduElem = document.getElementById('total-residu');
     if (overviewTotalResiduElem) overviewTotalResiduElem.textContent = overviewResiduToday.toFixed(1);
+    
+    const overviewTotalBotolElem = document.getElementById('total-botol');
+    if (overviewTotalBotolElem) overviewTotalBotolElem.textContent = overviewBotolToday.toFixed(1);
+    
+    const overviewTotalKertasElem = document.getElementById('total-kertas');
+    if (overviewTotalKertasElem) overviewTotalKertasElem.textContent = overviewKertasToday.toFixed(1);
 
 
     // 2. Update Grafik Tren Mingguan
@@ -159,12 +170,12 @@ function updateDashboardSpecificUI(data) {
 
     // 3. Update Grafik Distribusi Jenis (Doughnut)
     if (typeDistributionChart) {
-        const hasActualData = overviewOrganikToday > 0 || overviewAnorganikToday > 0 || overviewResiduToday > 0;
+        const hasActualData = overviewOrganikToday > 0 || overviewAnorganikToday > 0 || overviewResiduToday > 0 || overviewBotolToday > 0 || overviewKertasToday > 0;
 
         if (hasActualData) {
-            typeDistributionChart.data.datasets[0].data = [overviewOrganikToday, overviewAnorganikToday, overviewResiduToday];
-            typeDistributionChart.data.datasets[0].backgroundColor = ['#62B682', '#5C7AF3', '#D35748'];
-            typeDistributionChart.data.labels = ['Organik (kg)', 'Anorganik (kg)', 'Residu (kg)'];
+            typeDistributionChart.data.datasets[0].data = [overviewOrganikToday, overviewAnorganikToday, overviewResiduToday, overviewBotolToday, overviewKertasToday];
+            typeDistributionChart.data.datasets[0].backgroundColor = ['#62B682', '#5C7AF3', '#D35748', '#F5C14E', '#8B5CF6'];
+            typeDistributionChart.data.labels = ['Organik (kg)', 'Anorganik (kg)', 'Residu (kg)', 'Botol (kg)', 'Kertas (kg)'];
             typeDistributionChart.options.plugins.legend.display = true;
         } else {
             typeDistributionChart.data.datasets[0].data = [1]; 
@@ -179,7 +190,7 @@ function updateDashboardSpecificUI(data) {
 }
 
 
-// 3. FUNGSI BARU UNTUK MEMPROSES DATA DARI API
+// 4. FUNGSI BARU UNTUK MEMPROSES DATA DARI API
 /**
  * Mengubah data mentah dari API (array) menjadi objek
  * yang dibutuhkan oleh 'updateDashboardSpecificUI'
@@ -189,6 +200,8 @@ function processDataForDashboard(data) {
         overviewOrganikToday: 0,
         overviewAnorganikToday: 0,
         overviewResiduToday: 0,
+        overviewBotolToday: 0,
+        overviewKertasToday: 0,
         weeklyTotalData: [0, 0, 0, 0, 0, 0, 0] // Senin(0) - Minggu(6)
     };
 
@@ -219,6 +232,10 @@ function processDataForDashboard(data) {
                 stats.overviewAnorganikToday += item.berat;
             } else if (item.jenis === 'Residu') {
                 stats.overviewResiduToday += item.berat;
+            } else if (item.jenis === 'Botol') {
+                stats.overviewBotolToday += item.berat;
+            } else if (item.jenis === 'Kertas') {
+                stats.overviewKertasToday += item.berat;
             }
         }
 
@@ -243,21 +260,20 @@ function processDataForDashboard(data) {
     stats.overviewOrganikToday = parseFloat(stats.overviewOrganikToday.toFixed(1));
     stats.overviewAnorganikToday = parseFloat(stats.overviewAnorganikToday.toFixed(1));
     stats.overviewResiduToday = parseFloat(stats.overviewResiduToday.toFixed(1));
+    stats.overviewKertasToday = parseFloat(stats.overviewKertasToday.toFixed(1));
+    stats.overviewBotolToday = parseFloat(stats.overviewBotolToday.toFixed(1));
     stats.weeklyTotalData = stats.weeklyTotalData.map(val => parseFloat(val.toFixed(1)));
 
     return stats;
 }
 
-// 4. FUNGSI BARU UNTUK MEMUAT DATA
+// 5. FUNGSI BARU UNTUK MEMUAT DATA
 /**
  * Fungsi utama untuk memuat data dari API dan memperbarui UI
  */
 async function loadDashboardData() {
     try {
-        // Panggil fetchData, hasilnya adalah objek pagination
-        const response = await fetchData(); 
-        // Ambil array data dari properti 'data'
-        const allData = response.data;
+        const allData = await fetchData({}, '/api/sampah-export'); 
 
         // Proses data mentah menjadi format yg dibutuhkan
         const dashboardData = processDataForDashboard(allData);
@@ -271,12 +287,133 @@ async function loadDashboardData() {
     }
 }
 
+// 6. MQTT AUTO-UPDATE CLASS - HANYA INI YANG DITAMBAHKAN
+class MQTTDashboard {
+    constructor() {
+        this.mqttClient = null;
+        this.isConnected = false;
+        this.config = {
+            host: 'broker.hivemq.com',
+            port: 8884,
+            topic: 'undip/scale/new',
+            useSSL: true
+        };
+        
+        this.init();
+    }
 
-// --- DOMContentLoaded Listener (BAGIAN INI DIUBAH TOTAL) ---
+    async init() {
+        // Initialize MQTT connection
+        this.connectMQTT();
+        this.setupEventListeners();
+    }
+
+    connectMQTT() {
+        try {
+            const clientId = 'dashboard_' + Math.random().toString(16).substr(2, 8);
+            
+            this.mqttClient = new Paho.MQTT.Client(
+                this.config.host,
+                Number(this.config.port),
+                clientId
+            );
+
+            this.mqttClient.onConnectionLost = this.onConnectionLost.bind(this);
+            this.mqttClient.onMessageArrived = this.onMessageArrived.bind(this);
+
+            const connectOptions = {
+                onSuccess: this.onConnect.bind(this),
+                onFailure: this.onConnectFailure.bind(this),
+                useSSL: this.config.useSSL,
+                timeout: 10,
+                keepAliveInterval: 60,
+                cleanSession: true
+            };
+
+            this.updateConnectionStatus('connecting', 'MQTT: Connecting...');
+            this.mqttClient.connect(connectOptions);
+
+        } catch (error) {
+            console.error('MQTT connection error:', error);
+            this.updateConnectionStatus('error', 'MQTT: Connection failed');
+        }
+    }
+
+    onConnect() {
+        console.log('✅ MQTT Connected');
+        this.isConnected = true;
+        this.updateConnectionStatus('connected', 'MQTT: Connected');
+        this.mqttClient.subscribe(this.config.topic);
+    }
+
+    onConnectFailure(error) {
+        console.error('❌ MQTT Connection failed:', error.errorMessage);
+        this.isConnected = false;
+        this.updateConnectionStatus('error', 'MQTT: Connection failed');
+    }
+
+    onConnectionLost(responseObject) {
+        console.log('🔌 MQTT Connection lost');
+        this.isConnected = false;
+        this.updateConnectionStatus('disconnected', 'MQTT: Disconnected');
+        
+        setTimeout(() => {
+            if (!this.isConnected) {
+                this.connectMQTT();
+            }
+        }, 5000);
+    }
+
+    onMessageArrived(message) {
+        try {
+            const data = JSON.parse(message.payloadString);
+            console.log('📨 MQTT Message received');
+            
+            // Trigger auto-refresh ketika ada data baru
+            this.autoRefreshData();
+            
+        } catch (error) {
+            console.error('Error parsing MQTT message:', error);
+        }
+    }
+
+    autoRefreshData() {
+        // Refresh dashboard data dan global stats
+        loadDashboardData();
+        updateGlobalStatCards();
+        console.log('🔄 Auto-refresh triggered by MQTT');
+    }
+
+    updateConnectionStatus(status, text) {
+        const statusElement = document.getElementById('connectionStatus');
+        const statusText = document.getElementById('statusText');
+        
+        if (statusElement && statusText) {
+            const statusDot = statusElement.querySelector('.connection-status');
+            statusDot.classList.remove('status-connected', 'status-connecting', 'status-disconnected');
+            statusDot.classList.add(`status-${status}`);
+            statusText.textContent = text;
+        }
+    }
+
+    setupEventListeners() {
+        const refreshBtn = document.getElementById('refreshData');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => {
+                this.manualRefresh();
+            });
+        }
+    }
+
+    manualRefresh() {
+        loadDashboardData();
+        updateGlobalStatCards();
+    }
+}
+
+// --- DOMContentLoaded Listener - DITAMBAH INISIALISASI MQTT ---
 document.addEventListener('DOMContentLoaded', function () {
     
-    // Hapus semua yang berhubungan dengan 'firebaseConfig'
-
     // Panggil fungsi utilitas tanggal
     updateCurrentDate('current-date');
     updateGlobalStatCards();
@@ -287,5 +424,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Panggil fungsi utama baru kita untuk memuat data dari API
     loadDashboardData();
+
+    // INI SAJA YANG DITAMBAH: Inisialisasi MQTT untuk auto-update
+    mqttDashboard = new MQTTDashboard();
 
 });

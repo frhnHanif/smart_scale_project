@@ -6,19 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EcoScale - Dashboard</title>
 
-    {{-- Favicon --}}
-    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    
+    <link rel="icon" type="image/x-icon" href="<?php echo e(asset('favicon.ico')); ?>">
 
-    {{-- Tailwind CSS --}}
+    
     <script src="https://cdn.tailwindcss.com"></script>
 
-    {{-- Chart Js --}}
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    {{-- Paho MQTT Library --}}
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.2/mqttws31.min.js"></script>
 
-    {{-- Google Fonts (Inter) --}}
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -45,26 +45,80 @@
 
 <body style="background-color: #F2FCF8;" class="text-gray-800">
 
-    {{-- Kontainer Utama --}}
+    
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
 
-        {{-- Header Component --}}
-        <x-header></x-header>
+        
+        <?php if (isset($component)) { $__componentOriginalfd1f218809a441e923395fcbf03e4272 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalfd1f218809a441e923395fcbf03e4272 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.header','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('header'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?> <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalfd1f218809a441e923395fcbf03e4272)): ?>
+<?php $attributes = $__attributesOriginalfd1f218809a441e923395fcbf03e4272; ?>
+<?php unset($__attributesOriginalfd1f218809a441e923395fcbf03e4272); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalfd1f218809a441e923395fcbf03e4272)): ?>
+<?php $component = $__componentOriginalfd1f218809a441e923395fcbf03e4272; ?>
+<?php unset($__componentOriginalfd1f218809a441e923395fcbf03e4272); ?>
+<?php endif; ?>
 
-        {{-- Statistik Cards --}}
-        <x-cards-stats></x-cards-stats>
+        
+        <?php if (isset($component)) { $__componentOriginal4546b78580f6745ef52d45a2c7626972 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal4546b78580f6745ef52d45a2c7626972 = $attributes; } ?>
+<?php $component = App\View\Components\CardsStats::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('cards-stats'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\CardsStats::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?> <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal4546b78580f6745ef52d45a2c7626972)): ?>
+<?php $attributes = $__attributesOriginal4546b78580f6745ef52d45a2c7626972; ?>
+<?php unset($__attributesOriginal4546b78580f6745ef52d45a2c7626972); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal4546b78580f6745ef52d45a2c7626972)): ?>
+<?php $component = $__componentOriginal4546b78580f6745ef52d45a2c7626972; ?>
+<?php unset($__componentOriginal4546b78580f6745ef52d45a2c7626972); ?>
+<?php endif; ?>
 
-        {{-- Navbar Component --}}
-        <x-navbar></x-navbar>
+        
+        <?php if (isset($component)) { $__componentOriginalb9eddf53444261b5c229e9d8b9f1298e = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalb9eddf53444261b5c229e9d8b9f1298e = $attributes; } ?>
+<?php $component = App\View\Components\Navbar::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('navbar'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\Navbar::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?> <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalb9eddf53444261b5c229e9d8b9f1298e)): ?>
+<?php $attributes = $__attributesOriginalb9eddf53444261b5c229e9d8b9f1298e; ?>
+<?php unset($__attributesOriginalb9eddf53444261b5c229e9d8b9f1298e); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalb9eddf53444261b5c229e9d8b9f1298e)): ?>
+<?php $component = $__componentOriginalb9eddf53444261b5c229e9d8b9f1298e; ?>
+<?php unset($__componentOriginalb9eddf53444261b5c229e9d8b9f1298e); ?>
+<?php endif; ?>
 
-        {{-- Konten Grafik --}}
+        
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
             <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-md">
                 <h3 class="font-semibold text-2xl" style="color: #447F40;">Tren Sampah Mingguan</h3>
                 <p class="text-sm mb-4 text-gray-500">Perbandingan produksi sampah harian dengan target</p>
                 <canvas id="weeklyTrendChart"></canvas>
             </div>
-            {{-- Distribution Chart and Summary --}}
+            
             <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-md flex flex-col">
                 <div class="flex flex-row justify-between items-start">
                     <div>
@@ -75,20 +129,20 @@
                         Refresh Data
                     </button>
                 </div>
-                {{-- Pie Chart Canvas --}}
+                
                 <div class="flex-grow flex items-center justify-center my-4"
                     style="max-height: 250px; min-height: 200px;">
                     <canvas id="typeDistributionChart"></canvas>
                 </div>
 
-                {{-- Summary Section --}}
+                
                 <div class="mt-auto">
-                    {{-- Total Summary --}}
+                    
                     <div class="text-center mb-4 border-t pt-4">
                         <h4 class="text-sm font-medium text-gray-500">Total Sampah Hari Ini</h4>
                         <p class="text-2xl font-bold" style="color: #447F40;"><span id="total-sampah">0</span> kg</p>
                     </div>
-                    {{-- Breakdown by Type --}}
+                    
                     <div class="grid grid-cols-3 gap-4 text-center">
                         <div>
                             <h4 class="text-sm font-medium text-gray-500">Organik</h4>
@@ -117,9 +171,9 @@
             </div>
         </div>
 
-        {{-- Script Js khusus Dashboard --}}
-        <script type="module" src="{{ asset('js/dashboard.js') }}"></script>
+        
+        <script type="module" src="<?php echo e(asset('js/dashboard.js')); ?>"></script>
 
 </body>
 
-</html>
+</html><?php /**PATH C:\laragon\www\smart_scale_project\resources\views/dashboard.blade.php ENDPATH**/ ?>
