@@ -1,22 +1,23 @@
 import { fetchData, updateGlobalStatCards } from "./firebaseService.js";
 
+// === KONSTANTA GLOBAL ===
+// Aturan bisnis (harga, emisi, target) tetap di sini.
+// Daftar fakultas & jenis sampah akan dimuat dari JSON.
 const HARGA_ANORGANIK_PER_KG = 2000;
-const FAKTOR_EMISI_CO2E_PER_KG = 0.5;
+// const FAKTOR_EMISI_CO2E_PER_KG = 0.5; // Tidak terpakai di logika Anda, bisa dihapus
 const TARGET_BULANAN_KG = 1650;
-const CHART_COLORS = {
-    organik: 'rgba(68, 127, 64, 0.8)',
-    anorganik: 'rgba(92, 122, 243, 0.8)',
-    residu: 'rgba(156, 163, 175, 0.8)',
-};
-const validFacultyTargets = {
-    'FT': 50,
-    'FK': 45,
-    'FEB': 55,
-    'FH': 35,
-    'FSM': 40,
-    'FPP': 60
-};
 
+// === VARIABEL GLOBAL DINAMIS ===
+// Variabel-variabel ini akan diisi oleh app.config.json
+let masterJenisSampah = [];
+let masterFakultas = [];
+let facultyTargetsMap = {}; // Untuk akses cepat target: {'FT': 50, 'FK': 45}
+let chartColorsList = [];   // Daftar warna: ['#62B682', '#5C7AF3', ...]
+let jenisSampahLabels = []; // Daftar nama: ['Organik', 'Anorganik', ...]
+let fakultasLabels = [];    // Daftar kode: ['FT', 'FK', 'FEB', ...]
+let recyclableTypes = [];   // Daftar jenis sampah yg bisa didaur ulang
+
+// Variabel untuk menyimpan instance Chart
 let analitikBarChart, trendChart, distributionChartWeekly, distributionChartMonthly, facultyStackedChart, hourlyPatternChart,
     monthlyEconomicChart, monthlyEmissionChart, monthlyReductionChart;
 
@@ -33,6 +34,9 @@ function updateCurrentDate(elementId) {
         dateElement.textContent = today.toLocaleDateString('id-ID', options);
     }
 }
+
+// === FUNGSI INISIALISASI GRAFIK ===
+// (Fungsi-fungsi ini sekarang dipanggil SETELAH config dimuat)
 
 function initAnalitikBarChart(ctxId) {
     const ctx = document.getElementById(ctxId)?.getContext('2d');
@@ -109,16 +113,22 @@ function initTrendChart() {
     });
 }
 
+/**
+ * REFACTOR: Fungsi ini sekarang dinamis
+ * Menggunakan label & warna dari config global.
+ */
 function initDistributionChart(ctxId) {
     const ctx = document.getElementById(ctxId)?.getContext('2d');
     if (!ctx) return null;
     return new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Organik', 'Anorganik', 'Residu'],
+            // Menggunakan data dari config JSON
+            labels: jenisSampahLabels,
             datasets: [{
-                data: [1, 1, 1],
-                backgroundColor: [CHART_COLORS.organik, CHART_COLORS.anorganik, CHART_COLORS.residu]
+                // Buat data placeholder sesuai jumlah label
+                data: Array(jenisSampahLabels.length).fill(1), 
+                backgroundColor: chartColorsList
             }]
         },
         options: {
@@ -209,7 +219,7 @@ function initHourlyPatternChart() {
             datasets: [{
                 label: 'Jumlah Entri Sampah',
                 data: Array(24).fill(0),
-                backgroundColor: '#F59E0B'
+                backgroundColor: '#F59E0B' // Warna ini tidak ada di config, jadi biarkan
             }]
         },
         options: {
@@ -265,7 +275,6 @@ function initMonthlyEconomicChart() {
 }
 
 function initMonthlyEmissionChart() {
-    // PERBAIKAN: getContext('d') diubah menjadi getContext('2d')
     const ctx = document.getElementById('monthlyEmissionChart')?.getContext('2d');
     if (!ctx) return;
     monthlyEmissionChart = new Chart(ctx, {
@@ -302,7 +311,6 @@ function initMonthlyEmissionChart() {
 }
 
 function initMonthlyReductionChart() {
-    // PERBAIKAN: getContext('d') diubah menjadi getContext('2d')
     const ctx = document.getElementById('monthlyReductionChart')?.getContext('2d');
     if (!ctx) return;
     monthlyReductionChart = new Chart(ctx, {
@@ -350,13 +358,13 @@ function initMonthlyReductionChart() {
     });
 }
 
-// 4. HAPUS FUNGSI 'updateStatCardsOnDemand'
-
-// 5. FUNGSI BARU: Untuk memproses SEMUA data analitik
+/**
+ * REFACTOR: Fungsi ini sekarang dinamis
+ * Menggunakan data dari config global untuk memproses.
+ */
 function processDataForAnalitik(data) {
     console.log("Analitik.js: Memulai pemrosesan data...");
 
-    // Filter data mentah (SAMA)
     const filteredDocs = data.filter(doc => doc.jenis !== 'Umum' && doc.timestamp);
     if (filteredDocs.length === 0) {
         console.warn("Tidak ada data valid untuk diproses.");
@@ -371,9 +379,9 @@ function processDataForAnalitik(data) {
     const firstDayOfWeek = new Date(now);
     firstDayOfWeek.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
     firstDayOfWeek.setHours(0, 0, 0, 0);
-    const sevenDaysAgo = new Date(new Date().setDate(now.getDate() - 6)); // 7 hari termasuk hari ini
+    const sevenDaysAgo = new Date(new Date().setDate(now.getDate() - 6)); 
     sevenDaysAgo.setHours(0, 0, 0, 0);
-    const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 29)); // 30 hari termasuk hari ini
+    const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 29));
     thirtyDaysAgo.setHours(0, 0, 0, 0);
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     sixMonthsAgo.setHours(0, 0, 0, 0);
@@ -389,8 +397,9 @@ function processDataForAnalitik(data) {
             labels: [],
             data: []
         },
-        distributionChartWeekly: [0, 0, 0], // Org, Anorg, Res
-        distributionChartMonthly: [0, 0, 0], // Org, Anorg, Res
+        // Buat array dinamis berdasarkan jumlah jenis sampah
+        distributionChartWeekly: Array(jenisSampahLabels.length).fill(0),
+        distributionChartMonthly: Array(jenisSampahLabels.length).fill(0),
         facultyStackedChart: {
             labels: [],
             datasets: []
@@ -415,7 +424,7 @@ function processDataForAnalitik(data) {
     const todayTotals = {};
     const yesterdayTotals = {};
     filteredDocs.forEach(doc => {
-        const docDate = doc.timestamp; // Sudah jadi objek Date
+        const docDate = doc.timestamp; 
         if (doc.fakultas) {
             if (docDate >= startOfToday) {
                 todayTotals[doc.fakultas] = (todayTotals[doc.fakultas] || 0) + doc.berat;
@@ -424,7 +433,8 @@ function processDataForAnalitik(data) {
             }
         }
     });
-    const facultyNames = [...new Set([...Object.keys(todayTotals), ...Object.keys(yesterdayTotals)])].sort();
+    // REFACTOR: Gunakan fakultasLabels dari config untuk memastikan semua ada
+    const facultyNames = fakultasLabels.filter(f => todayTotals[f] || yesterdayTotals[f]);
     results.analitikBarChart.labels = facultyNames;
     results.analitikBarChart.sampahHariIniData = facultyNames.map(name => todayTotals[name] || 0);
     results.analitikBarChart.penguranganPercentageData = facultyNames.map(name => {
@@ -434,22 +444,17 @@ function processDataForAnalitik(data) {
     });
 
     // --- 1. GRAFIK: TREN VOLUME SAMPAH (7 HARI TERAKHIR) ---
+    // (Tidak ada perubahan, logika ini sudah dinamis)
     const trendData = {};
     for (let i = 6; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        const formattedDate = date.toLocaleDateString('id-ID', {
-            day: '2-digit',
-            month: 'short'
-        });
+        const formattedDate = date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
         results.trendChart.labels.push(formattedDate);
         trendData[formattedDate] = 0;
     }
     filteredDocs.filter(doc => doc.timestamp >= sevenDaysAgo).forEach(doc => {
-        const dateKey = doc.timestamp.toLocaleDateString('id-ID', {
-            day: '2-digit',
-            month: 'short'
-        });
+        const dateKey = doc.timestamp.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
         if (trendData.hasOwnProperty(dateKey)) {
             trendData[dateKey] += doc.berat;
         }
@@ -457,16 +462,14 @@ function processDataForAnalitik(data) {
     results.trendChart.data = Object.values(trendData);
 
     // --- 2. GRAFIK: DISTRIBUSI JENIS SAMPAH (MINGGUAN & BULANAN) ---
-    const monthlyDataDist = {
-        Organik: 0,
-        Anorganik: 0,
-        Residu: 0
-    };
-    const weeklyDataDist = {
-        Organik: 0,
-        Anorganik: 0,
-        Residu: 0
-    };
+    // REFACTOR: Buat objek dinamis
+    const monthlyDataDist = {};
+    const weeklyDataDist = {};
+    jenisSampahLabels.forEach(label => {
+        monthlyDataDist[label] = 0;
+        weeklyDataDist[label] = 0;
+    });
+
     filteredDocs.forEach(doc => {
         if (doc.timestamp >= firstDayOfMonth) {
             if (monthlyDataDist.hasOwnProperty(doc.jenis)) monthlyDataDist[doc.jenis] += doc.berat;
@@ -475,24 +478,38 @@ function processDataForAnalitik(data) {
             if (weeklyDataDist.hasOwnProperty(doc.jenis)) weeklyDataDist[doc.jenis] += doc.berat;
         }
     });
+    // Urutan akan sama persis dengan jenisSampahLabels
     results.distributionChartMonthly = Object.values(monthlyDataDist);
     results.distributionChartWeekly = Object.values(weeklyDataDist);
 
     // --- 3. GRAFIK: KOMPARASI KOMPOSISI SAMPAH PER FAKULTAS (ALL TIME) ---
-    const faculties = Object.keys(validFacultyTargets);
+    // REFACTOR: Gunakan label & warna dinamis
+    const faculties = fakultasLabels; // ['FT', 'FK', ...]
     const facultyData = {};
-    filteredDocs.filter(doc => faculties.includes(doc.fakultas)).forEach(doc => {
-        if (!facultyData[doc.fakultas]) facultyData[doc.fakultas] = {};
-        facultyData[doc.fakultas][doc.jenis] = (facultyData[doc.fakultas][doc.jenis] || 0) + doc.berat;
+    // Inisialisasi data fakultas
+    faculties.forEach(fakultas => {
+        facultyData[fakultas] = {};
+        jenisSampahLabels.forEach(jenis => {
+            facultyData[fakultas][jenis] = 0;
+        });
     });
+    
+    // Isi data
+    filteredDocs.filter(doc => faculties.includes(doc.fakultas)).forEach(doc => {
+        if (facultyData[doc.fakultas] && facultyData[doc.fakultas].hasOwnProperty(doc.jenis)) {
+             facultyData[doc.fakultas][doc.jenis] += doc.berat;
+        }
+    });
+    
     results.facultyStackedChart.labels = faculties;
-    results.facultyStackedChart.datasets = ['Organik', 'Anorganik', 'Residu'].map(jenis => ({
+    results.facultyStackedChart.datasets = jenisSampahLabels.map((jenis, index) => ({
         label: jenis,
-        data: faculties.map(fakultas => facultyData[fakultas]?.[jenis] || 0),
-        backgroundColor: CHART_COLORS[jenis.toLowerCase()],
+        data: faculties.map(fakultas => facultyData[fakultas][jenis] || 0),
+        backgroundColor: chartColorsList[index], // <-- Dinamis
     }));
 
     // --- 4. GRAFIK: POLA WAKTU PEMBUANGAN (30 HARI TERAKHIR) ---
+    // (Tidak ada perubahan, logika ini sudah dinamis)
     const hourlyData = Array(24).fill(0);
     filteredDocs.filter(doc => doc.timestamp >= thirtyDaysAgo).forEach(doc => {
         const hour = doc.timestamp.getHours();
@@ -501,19 +518,31 @@ function processDataForAnalitik(data) {
     results.hourlyPatternChart = hourlyData;
 
     // --- 5. KARTU STATISTIK & TARGET (BULAN INI) ---
+    // REFACTOR: Hitung potensi ekonomi dan emisi secara dinamis
     const docsBulanIni = filteredDocs.filter(doc => doc.timestamp >= firstDayOfMonth);
-    const totalAnorganikBulanIni = docsBulanIni.filter(d => d.jenis === 'Anorganik').reduce((sum, d) => sum + d.berat, 0);
-    const totalOrganikBulanIni = docsBulanIni.filter(d => d.jenis === 'Organik').reduce((sum, d) => sum + d.berat, 0);
+    
+    const totalOrganikBulanIni = docsBulanIni
+        .filter(d => d.jenis === 'Organik')
+        .reduce((sum, d) => sum + d.berat, 0);
+        
+    // Asumsi: 'recyclableTypes' diisi saat init (misal: ['Anorganik', 'Botol', 'Kertas'])
+    const totalRecyclableBulanIni = docsBulanIni
+        .filter(d => recyclableTypes.includes(d.jenis))
+        .reduce((sum, d) => sum + d.berat, 0);
+
     const totalSampahBulanIni = docsBulanIni.reduce((sum, d) => sum + d.berat, 0);
-    // Rumus emisi baru
-    const totalEmisiKarbon = (totalOrganikBulanIni * 1.0) + (totalAnorganikBulanIni * 0.4);
-    results.statCards.potensiEkonomi = Math.round(totalAnorganikBulanIni * HARGA_ANORGANIK_PER_KG);
+
+    // Rumus emisi (diasumsikan anorganik/recyclable punya faktor sama)
+    const totalEmisiKarbon = (totalOrganikBulanIni * 1.0) + (totalRecyclableBulanIni * 0.4);
+    
+    results.statCards.potensiEkonomi = Math.round(totalRecyclableBulanIni * HARGA_ANORGANIK_PER_KG);
     results.statCards.emisiKarbon = totalEmisiKarbon;
     const percentage = Math.min((totalSampahBulanIni / TARGET_BULANAN_KG) * 100, 100);
     results.statCards.progressPercentage = percentage;
     results.statCards.progressLabel = `${totalSampahBulanIni.toFixed(1)} kg / ${TARGET_BULANAN_KG} kg`;
 
     // --- 6. GRAFIK-GRAFIK TREN BULANAN (6 BULAN TERAKHIR) ---
+    // REFACTOR: Gunakan logika dinamis untuk emisi & ekonomi
     const monthlyAggregates = {};
     filteredDocs.filter(doc => doc.timestamp >= sixMonthsAgo).forEach(doc => {
         const date = doc.timestamp;
@@ -521,26 +550,34 @@ function processDataForAnalitik(data) {
         if (!monthlyAggregates[monthKey]) {
             monthlyAggregates[monthKey] = {
                 totalOrganik: 0,
-                totalAnorganik: 0,
+                totalRecyclable: 0, // <-- REFACTOR
                 totalSampah: 0,
-                label: date.toLocaleDateString('id-ID', {
-                    month: 'short',
-                    year: 'numeric'
-                })
+                label: date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })
             };
         }
-        if (doc.jenis === 'Organik') monthlyAggregates[monthKey].totalOrganik += doc.berat;
-        if (doc.jenis === 'Anorganik') monthlyAggregates[monthKey].totalAnorganik += doc.berat;
+        if (doc.jenis === 'Organik') {
+            monthlyAggregates[monthKey].totalOrganik += doc.berat;
+        }
+        if (recyclableTypes.includes(doc.jenis)) { // <-- REFACTOR
+            monthlyAggregates[monthKey].totalRecyclable += doc.berat;
+        }
         monthlyAggregates[monthKey].totalSampah += doc.berat;
     });
+
     const sortedMonthKeys = Object.keys(monthlyAggregates).sort();
     results.monthlyTrends.labels = sortedMonthKeys.map(key => monthlyAggregates[key].label);
-    results.monthlyTrends.economicData = sortedMonthKeys.map(key => Math.round(monthlyAggregates[key].totalAnorganik * HARGA_ANORGANIK_PER_KG));
+    
+    results.monthlyTrends.economicData = sortedMonthKeys.map(key => 
+        Math.round(monthlyAggregates[key].totalRecyclable * HARGA_ANORGANIK_PER_KG) // <-- REFACTOR
+    );
+    
     results.monthlyTrends.emissionData = sortedMonthKeys.map(key => {
         const monthData = monthlyAggregates[key];
-        return (monthData.totalOrganik * 1.0) + (monthData.totalAnorganik * 0.4);
+        return (monthData.totalOrganik * 1.0) + (monthData.totalRecyclable * 0.4); // <-- REFACTOR
     });
+    
     results.monthlyTrends.totalKgData = sortedMonthKeys.map(key => monthlyAggregates[key].totalSampah);
+    
     for (let i = 0; i < sortedMonthKeys.length; i++) {
         if (i === 0) {
             results.monthlyTrends.reductionData.push(0);
@@ -557,7 +594,7 @@ function processDataForAnalitik(data) {
 
 
 // --- 6. FUNGSI UTAMA UNTUK UPDATE UI ---
-// (Fungsi ini sekarang JAUH LEBIH SEDERHANA, hanya mem-plot data)
+// (Tidak ada perubahan di sini, karena data sudah diproses)
 function updateAnalitikUI(data) {
     if (!data) {
         console.warn("Analitik.js: Tidak ada data terproses untuk ditampilkan.");
@@ -593,7 +630,6 @@ function updateAnalitikUI(data) {
     // 3. GRAFIK: KOMPARASI KOMPOSISI SAMPAH PER FAKULTAS
     if (facultyStackedChart) {
         facultyStackedChart.data.labels = data.facultyStackedChart.labels;
-        // Perlu map lagi untuk toFixed(1) di dalam data
         facultyStackedChart.data.datasets = data.facultyStackedChart.datasets.map(dataset => ({
             ...dataset,
             data: dataset.data.map(d => d.toFixed(1))
@@ -638,19 +674,14 @@ function updateAnalitikUI(data) {
 }
 
 
-// 7. FUNGSI BARU: Untuk memuat data
+// --- 7. FUNGSI MEMUAT DATA ---
+// (Tidak ada perubahan, tapi sekarang dipanggil setelah config)
 async function loadAnalitikData() {
     console.log("Analitik.js: Memulai pengambilan data...");
     try {
-        // Panggil fetchData, hasilnya adalah objek pagination
         const response = await fetchData();
-        // Ambil array data dari properti 'data'
         const allData = response.data;
-
-        // 2. Proses semua data
         const processedData = processDataForAnalitik(allData);
-
-        // 3. Update UI dengan data yang sudah matang
         updateAnalitikUI(processedData);
 
     } catch (error) {
@@ -658,39 +689,69 @@ async function loadAnalitikData() {
     }
 }
 
-// ===================================================================
-// BARU: Listener untuk Global MQTT Event
-// ===================================================================
-/**
- * Mendengarkan event 'mqtt:data-baru' yang disiarkan oleh GlobalMQTT.js
- * Jika ada data baru, panggil fungsi refresh untuk halaman analitik.
- */
+// --- 8. LISTENER MQTT ---
+// (Tidak ada perubahan)
 window.addEventListener('mqtt:data-baru', function(event) {
     console.log('🔄 ANALITIK: Trigger auto-refresh diterima!', event.detail);
-    
-    // Panggil fungsi refresh spesifik analitik
     loadAnalitikData(); 
     updateGlobalStatCards();
 });
-// ===================================================================
 
 
-// --- FUNGSI INISIALISASI UTAMA HALAMAN (DIUBAH) ---
-export function initAnalitikPage() { // Hapus 'firebaseConfig'
+// --- 9. FUNGSI INISIALISASI UTAMA ---
+/**
+ * REFACTOR: Fungsi ini sekarang ASYNC
+ * Akan memuat config.json SEBELUM menginisialisasi chart
+ */
+export async function initAnalitikPage() {
     console.log("Analitik.js: Menggunakan arsitektur modular yang benar.");
 
-    // HAPUS KODE FIREBASE
-    // initializeFirebase(firebaseConfig);
-    // db = getFirestoreInstance();
-    // if (!db) {
-    // 	  console.error("Firestore DB tidak tersedia.");
-    // 	  return;
-    // }
-
-    // Panggil fungsi utilitas tanggal
+    // Panggil fungsi utilitas tanggal (bisa jalan duluan)
     updateCurrentDate('current-date');
     updateGlobalStatCards();
-    // Inisialisasi SEMUA kerangka grafik (SAMA)
+
+    // ===================================================
+    // LANGKAH 1: FETCH DATA KONFIGURASI DARI JSON
+    // ===================================================
+    try {
+        const response = await fetch('/js/app.config.json'); // Ambil file JSON
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const config = await response.json();
+
+        // Isi variabel global
+        masterJenisSampah = config.jenisSampah;
+        masterFakultas = config.fakultas;
+
+        // Buat "peta" dan "daftar" untuk dipakai di seluruh skrip
+        masterJenisSampah.forEach(j => {
+            jenisSampahLabels.push(j.nama);
+            chartColorsList.push(j.warna);
+            // Tentukan jenis apa yg bisa didaur ulang (untuk ekonomi & emisi)
+            if (j.nama !== 'Organik' && j.nama !== 'Residu') {
+                recyclableTypes.push(j.nama);
+            }
+        });
+        
+        masterFakultas.forEach(f => {
+            fakultasLabels.push(f.kode);
+            facultyTargetsMap[f.kode] = f.target_harian_kg;
+        });
+        
+        console.log("Konfigurasi aplikasi berhasil dimuat:", config);
+
+    } catch (error) {
+        console.error("KRITIS: Gagal memuat app.config.json. Halaman tidak dapat berfungsi.", error);
+        // Tampilkan error ke pengguna di UI jika perlu
+        return; // Hentikan eksekusi
+    }
+    // =G=================================================
+    // DATA KONFIGURASI SELESAI DIMUAT
+    // ===================================================
+
+    // LANGKAH 2: Inisialisasi SEMUA kerangka grafik
+    // (Fungsi-fungsi ini sekarang akan menggunakan data master global)
     initAnalitikBarChart('analitikBarChart');
     initTrendChart();
     distributionChartWeekly = initDistributionChart('distributionChartWeekly');
@@ -701,8 +762,7 @@ export function initAnalitikPage() { // Hapus 'firebaseConfig'
     initMonthlyEmissionChart();
     initMonthlyReductionChart();
 
-    // HAPUS 'setupGlobalSampahListener'
-    // GANTI DENGAN 'loadAnalitikData'
+    // LANGKAH 3: Muat data utama
     loadAnalitikData();
 
     console.log("Inisialisasi halaman analitik selesai.");

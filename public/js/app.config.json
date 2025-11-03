@@ -1,0 +1,91 @@
+{
+  "jenisSampah": [
+    {
+      "nama": "Organik",
+      "warna": "#62B682"
+    },
+    {
+      "nama": "Anorganik",
+      "warna": "#5C7AF3"
+    },
+    {
+      "nama": "Residu",
+      "warna": "#D35748"
+    },
+    {
+      "nama": "Botol",
+      "warna": "#F5C14E"
+    },
+    {
+      "nama": "Kertas",
+      "warna": "#8B5CF6"
+    }
+  ],
+  "fakultas": [
+    {
+      "kode": "FEB",
+      "nama_lengkap": "Fakultas Ekonomika dan Bisnis",
+      "target_harian_kg": 55
+    },
+    {
+      "kode": "FH",
+      "nama_lengkap": "Fakultas Hukum",
+      "target_harian_kg": 35
+    },
+    {
+      "kode": "FIB",
+      "nama_lengkap": "Fakultas Ilmu Budaya",
+      "target_harian_kg": 55
+    },
+    {
+      "kode": "FISIP",
+      "nama_lengkap": "Fakultas Ilmu Sosial dan Ilmu Politik",
+      "target_harian_kg": 60
+    },
+    {
+      "kode": "FK",
+      "nama_lengkap": "Fakultas Kedokteran",
+      "target_harian_kg": 45
+    },
+    {
+      "kode": "FKM",
+      "nama_lengkap": "Fakultas Kesehatan Masyarakat",
+      "target_harian_kg": 50
+    },
+    {
+      "kode": "FPIK",
+      "nama_lengkap": "Fakultas Perikanan dan Ilmu Kelautan",
+      "target_harian_kg": 55
+    },
+    {
+      "kode": "FPP",
+      "nama_lengkap": "Fakultas Pertanian dan Peternakan",
+      "target_harian_kg": 60
+    },
+    {
+      "kode": "FPsi",
+      "nama_lengkap": "Fakultas Psikologi",
+      "target_harian_kg": 45
+    },
+    {
+      "kode": "FSM",
+      "nama_lengkap": "Fakultas Sains dan Matematika",
+      "target_harian_kg": 40
+    },
+    {
+      "kode": "FT",
+      "nama_lengkap": "Fakultas Teknik",
+      "target_harian_kg": 50
+    },
+    {
+      "kode": "SV",
+      "nama_lengkap": "Sekolah Vokasi",
+      "target_harian_kg": 45
+    },
+    {
+      "kode": "TPST",
+      "nama_lengkap": "Tempat Pengolahan Sampah Terpadu",
+      "target_harian_kg": 75
+    }
+  ]
+}
