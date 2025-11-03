@@ -174,8 +174,11 @@ function processDataForFakultas(data) {
  * Mengambil data dari API, memprosesnya, lalu merender.
  */
 async function loadFakultasData() {
-    reductionLeaderboardContainer.innerHTML = '<p class="text-center text-gray-500">Memuat data...</p>';
-    targetLeaderboardContainer.innerHTML = '<p class="text-center text-gray-500">Memuat data...</p>';
+    // Jangan tampilkan 'Memuat data...' jika data sudah ada (saat auto-refresh)
+    if (!allAggregatedData) {
+        reductionLeaderboardContainer.innerHTML = '<p class="text-center text-gray-500">Memuat data...</p>';
+        targetLeaderboardContainer.innerHTML = '<p class="text-center text-gray-500">Memuat data...</p>';
+    }
 
     try {
         // 1. Ambil semua data dari API
@@ -186,7 +189,7 @@ async function loadFakultasData() {
         // 2. Proses data mentah menjadi format agregat
         allAggregatedData = processDataForFakultas(allData);
 
-        // 3. Render leaderboard (pertama kali)
+        // 3. Render leaderboard (pertama kali atau refresh)
         renderAllLeaderboards();
 
     } catch (error) {
@@ -360,6 +363,23 @@ function renderTargetLeaderboard(data) {
         `;
     });
 }
+
+// ===================================================================
+// BARU: Listener untuk Global MQTT Event
+// ===================================================================
+/**
+ * Mendengarkan event 'mqtt:data-baru' yang disiarkan oleh GlobalMQTT.js
+ * Jika ada data baru, panggil fungsi refresh untuk halaman fakultas.
+ */
+window.addEventListener('mqtt:data-baru', function(event) {
+    console.log('🔄 FAKULTAS: Trigger auto-refresh diterima!', event.detail);
+    
+    // Panggil fungsi refresh spesifik fakultas
+    loadFakultasData(); 
+    updateGlobalStatCards();
+});
+// ===================================================================
+
 
 // 11. FUNGSI UTAMA (INIT) DIUBAH
 // Hapus 'firebaseConfig' dan panggil 'loadFakultasData'

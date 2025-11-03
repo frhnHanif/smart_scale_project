@@ -40,6 +40,8 @@
         .status-connected { background-color: #10B981; }
         .status-connecting { background-color: #F59E0B; }
         .status-disconnected { background-color: #EF4444; }
+        /* Tambahkan status error untuk konsistensi dengan JS */
+        .status-error { background-color: #EF4444; }
     </style>
 </head>
 
@@ -116,9 +118,18 @@
                 </div>
             </div>
         </div>
+    </div>
 
-        {{-- Script Js khusus Dashboard --}}
-        <script type="module" src="{{ asset('js/dashboard.js') }}"></script>
+    {{-- =================================================================== --}}
+    {{-- BARIS INI DITAMBAHKAN --}}
+    {{-- =================================================================== --}}
+    {{-- Memuat Skrip MQTT Global --}}
+    <script src="{{ asset('js/GlobalMQTT.js') }}"></script>
+    {{-- =================================================================== --}}
+
+
+    {{-- Script Js khusus Dashboard --}}
+    <script type="module" src="{{ asset('js/dashboard.js') }}"></script>
 
 </body>
 

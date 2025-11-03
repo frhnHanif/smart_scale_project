@@ -17,6 +17,13 @@
     {{-- Chart Js --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    {{-- =================================================================== --}}
+    {{-- BARIS INI DITAMBAHKAN --}}
+    {{-- =================================================================== --}}
+    {{-- Paho MQTT Library (Dibutuhkan oleh GlobalMQTT.js) --}}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.2/mqttws31.min.js"></script>
+    {{-- =================================================================== --}}
+
     {{-- Google Fonts (Inter) --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,6 +51,22 @@
         .filter-btn:not(.filter-btn-active):hover {
             @apply bg-gray-100 text-teal-700;
         }
+
+        /* =================================================================== */
+        /* STYLE INI DITAMBAHKAN (Agar indikator status di header tampil) */
+        /* =================================================================== */
+        .connection-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-connected { background-color: #10B981; }
+        .status-connecting { background-color: #F59E0B; }
+        .status-disconnected { background-color: #EF4444; }
+        .status-error { background-color: #EF4444; }
+        /* =================================================================== */
     </style>
 </head>
 
@@ -90,8 +113,14 @@
         </div>
     </div>
 
-    {{-- Kita tidak perlu lagi blok window.firebaseConfig --}}
+    {{-- =================================================================== --}}
+    {{-- BARIS INI DITAMBAHKAN --}}
+    {{-- =================================================================== --}}
+    {{-- Memuat Skrip MQTT Global --}}
+    <script src="{{ asset('js/GlobalMQTT.js') }}"></script>
+    {{-- =================================================================== --}}
 
+    {{-- Skrip ini sudah benar dan tidak perlu diubah --}}
     <script type="module">
         import {
             initFakultasPage

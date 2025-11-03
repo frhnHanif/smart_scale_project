@@ -1,5 +1,3 @@
-// public/js/laporan.js
-
 // 1. IMPORTS
 import { fetchData, updateGlobalStatCards } from "./firebaseService.js";
 // (Impor XLSX ini adalah perbaikan Anda yang sudah benar)
@@ -190,8 +188,8 @@ function displayAchievements(summaryData) {
             : `<svg class="w-4 h-4" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <circle cx="12" cy="12" r="10" fill="#F97316" />
     <path fill-rule="evenodd" clip-rule="evenodd" fill="#FFFFFF"
-          transform="scale(0.7) translate(5, 5)"
-          d="M5.5 3a1 1 0 0 0 0 2H7v2.333a3 3 0 0 0 .556 1.74l1.57 2.814A1.1 1.1 0 0 0 9.2 12a.998.998 0 0 0-.073.113l-1.57 2.814A3 3 0 0 0 7 16.667V19H5.5a1 1 0 1 0 0 2h13a1 1 0 1 0 0-2H17v-2.333a3 3 0 0 0-.56-1.745l-1.616-2.82a1 1 0 0 0-.067-.102 1 1 0 0 0 .067-.103l1.616-2.819A3 3 0 0 0 17 7.333V5h1.5a1 1 0 1 0 0-2h-13Z" />
+            transform="scale(0.7) translate(5, 5)"
+            d="M5.5 3a1 1 0 0 0 0 2H7v2.333a3 3 0 0 0 .556 1.74l1.57 2.814A1.1 1.1 0 0 0 9.2 12a.998.998 0 0 0-.073.113l-1.57 2.814A3 3 0 0 0 7 16.667V19H5.5a1 1 0 1 0 0 2h13a1 1 0 1 0 0-2H17v-2.333a3 3 0 0 0-.56-1.745l-1.616-2.82a1 1 0 0 0-.067-.102 1 1 0 0 0 .067-.103l1.616-2.819A3 3 0 0 0 17 7.333V5h1.5a1 1 0 1 0 0-2h-13Z" />
 </svg>`;
         
         // Baris ini adalah kuncinya, memastikan 'flex' ada di class
@@ -418,6 +416,25 @@ async function exportReport() {
 // ==============================
 // === BAGIAN 4: INISIALISASI HALAMAN (DIUBAH) ===
 // ==============================
+
+// ===================================================================
+// BARU: Listener untuk Global MQTT Event
+// ===================================================================
+/**
+ * Mendengarkan event 'mqtt:data-baru' yang disiarkan oleh GlobalMQTT.js
+ * Jika ada data baru, panggil fungsi refresh untuk *ringkasan* di halaman laporan.
+ * Kita TIDAK me-refresh tabel laporan utama (fetchAndDisplayReportData)
+ * karena itu akan mengganggu filter dan pagination pengguna.
+ */
+window.addEventListener('mqtt:data-baru', function(event) {
+    console.log('🔄 LAPORAN: Trigger auto-refresh diterima!', event.detail);
+    
+    // Panggil fungsi refresh spesifik laporan (hanya ringkasan)
+    loadSummaryData(); 
+    updateGlobalStatCards();
+});
+// ===================================================================
+
 
 export function initLaporanPage() {
     // Panggil fungsi global (SAMA)

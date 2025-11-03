@@ -265,7 +265,8 @@ function initMonthlyEconomicChart() {
 }
 
 function initMonthlyEmissionChart() {
-    const ctx = document.getElementById('monthlyEmissionChart')?.getContext('d');
+    // PERBAIKAN: getContext('d') diubah menjadi getContext('2d')
+    const ctx = document.getElementById('monthlyEmissionChart')?.getContext('2d');
     if (!ctx) return;
     monthlyEmissionChart = new Chart(ctx, {
         type: 'bar',
@@ -301,7 +302,8 @@ function initMonthlyEmissionChart() {
 }
 
 function initMonthlyReductionChart() {
-    const ctx = document.getElementById('monthlyReductionChart')?.getContext('d');
+    // PERBAIKAN: getContext('d') diubah menjadi getContext('2d')
+    const ctx = document.getElementById('monthlyReductionChart')?.getContext('2d');
     if (!ctx) return;
     monthlyReductionChart = new Chart(ctx, {
         type: 'bar',
@@ -656,6 +658,22 @@ async function loadAnalitikData() {
     }
 }
 
+// ===================================================================
+// BARU: Listener untuk Global MQTT Event
+// ===================================================================
+/**
+ * Mendengarkan event 'mqtt:data-baru' yang disiarkan oleh GlobalMQTT.js
+ * Jika ada data baru, panggil fungsi refresh untuk halaman analitik.
+ */
+window.addEventListener('mqtt:data-baru', function(event) {
+    console.log('🔄 ANALITIK: Trigger auto-refresh diterima!', event.detail);
+    
+    // Panggil fungsi refresh spesifik analitik
+    loadAnalitikData(); 
+    updateGlobalStatCards();
+});
+// ===================================================================
+
 
 // --- FUNGSI INISIALISASI UTAMA HALAMAN (DIUBAH) ---
 export function initAnalitikPage() { // Hapus 'firebaseConfig'
@@ -665,8 +683,8 @@ export function initAnalitikPage() { // Hapus 'firebaseConfig'
     // initializeFirebase(firebaseConfig);
     // db = getFirestoreInstance();
     // if (!db) {
-    //     console.error("Firestore DB tidak tersedia.");
-    //     return;
+    // 	  console.error("Firestore DB tidak tersedia.");
+    // 	  return;
     // }
 
     // Panggil fungsi utilitas tanggal

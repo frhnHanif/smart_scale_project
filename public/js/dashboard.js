@@ -5,8 +5,7 @@ import { fetchData, updateGlobalStatCards } from "./firebaseService.js";
 let weeklyTrendChart;
 let typeDistributionChart;
 
-// 2. MQTT Dashboard Instance - HANYA INI YANG DITAMBAH
-let mqttDashboard = null;
+// 2. Variabel mqttDashboard DIHAPUS
 
 // 3. FUNGSI UTILITAS BARU (Pengganti dari firebaseService.js)
 /**
@@ -287,131 +286,28 @@ async function loadDashboardData() {
     }
 }
 
-// 6. MQTT AUTO-UPDATE CLASS - HANYA INI YANG DITAMBAHKAN
-class MQTTDashboard {
-    constructor() {
-        this.mqttClient = null;
-        this.isConnected = false;
-        this.config = {
-            host: 'broker.hivemq.com',
-            port: 8884,
-            topic: 'undip/scale/new',
-            useSSL: true
-        };
-        
-        this.init();
-    }
 
-    async init() {
-        // Initialize MQTT connection
-        this.connectMQTT();
-        this.setupEventListeners();
-    }
+// 6. MQTT AUTO-UPDATE CLASS (DIHAPUS)
 
-    connectMQTT() {
-        try {
-            const clientId = 'dashboard_' + Math.random().toString(16).substr(2, 8);
-            
-            this.mqttClient = new Paho.MQTT.Client(
-                this.config.host,
-                Number(this.config.port),
-                clientId
-            );
 
-            this.mqttClient.onConnectionLost = this.onConnectionLost.bind(this);
-            this.mqttClient.onMessageArrived = this.onMessageArrived.bind(this);
+// ===================================================================
+// BARU: Listener untuk Global MQTT Event
+// ===================================================================
+/**
+ * Mendengarkan event 'mqtt:data-baru' yang disiarkan oleh GlobalMQTT.js
+ * Jika ada data baru, panggil fungsi refresh untuk halaman dashboard.
+ */
+window.addEventListener('mqtt:data-baru', function(event) {
+    console.log('🔄 DASHBOARD: Trigger auto-refresh diterima!', event.detail);
+    
+    // Panggil fungsi refresh spesifik dashboard
+    loadDashboardData(); 
+    updateGlobalStatCards();
+});
+// ===================================================================
 
-            const connectOptions = {
-                onSuccess: this.onConnect.bind(this),
-                onFailure: this.onConnectFailure.bind(this),
-                useSSL: this.config.useSSL,
-                timeout: 10,
-                keepAliveInterval: 60,
-                cleanSession: true
-            };
 
-            this.updateConnectionStatus('connecting', 'MQTT: Connecting...');
-            this.mqttClient.connect(connectOptions);
-
-        } catch (error) {
-            console.error('MQTT connection error:', error);
-            this.updateConnectionStatus('error', 'MQTT: Connection failed');
-        }
-    }
-
-    onConnect() {
-        console.log('✅ MQTT Connected');
-        this.isConnected = true;
-        this.updateConnectionStatus('connected', 'MQTT: Connected');
-        this.mqttClient.subscribe(this.config.topic);
-    }
-
-    onConnectFailure(error) {
-        console.error('❌ MQTT Connection failed:', error.errorMessage);
-        this.isConnected = false;
-        this.updateConnectionStatus('error', 'MQTT: Connection failed');
-    }
-
-    onConnectionLost(responseObject) {
-        console.log('🔌 MQTT Connection lost');
-        this.isConnected = false;
-        this.updateConnectionStatus('disconnected', 'MQTT: Disconnected');
-        
-        setTimeout(() => {
-            if (!this.isConnected) {
-                this.connectMQTT();
-            }
-        }, 5000);
-    }
-
-    onMessageArrived(message) {
-        try {
-            const data = JSON.parse(message.payloadString);
-            console.log('📨 MQTT Message received');
-            
-            // Trigger auto-refresh ketika ada data baru
-            this.autoRefreshData();
-            
-        } catch (error) {
-            console.error('Error parsing MQTT message:', error);
-        }
-    }
-
-    autoRefreshData() {
-        // Refresh dashboard data dan global stats
-        loadDashboardData();
-        updateGlobalStatCards();
-        console.log('🔄 Auto-refresh triggered by MQTT');
-    }
-
-    updateConnectionStatus(status, text) {
-        const statusElement = document.getElementById('connectionStatus');
-        const statusText = document.getElementById('statusText');
-        
-        if (statusElement && statusText) {
-            const statusDot = statusElement.querySelector('.connection-status');
-            statusDot.classList.remove('status-connected', 'status-connecting', 'status-disconnected');
-            statusDot.classList.add(`status-${status}`);
-            statusText.textContent = text;
-        }
-    }
-
-    setupEventListeners() {
-        const refreshBtn = document.getElementById('refreshData');
-        if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => {
-                this.manualRefresh();
-            });
-        }
-    }
-
-    manualRefresh() {
-        loadDashboardData();
-        updateGlobalStatCards();
-    }
-}
-
-// --- DOMContentLoaded Listener - DITAMBAH INISIALISASI MQTT ---
+// --- DOMContentLoaded Listener - DIMODIFIKASI ---
 document.addEventListener('DOMContentLoaded', function () {
     
     // Panggil fungsi utilitas tanggal
@@ -425,7 +321,17 @@ document.addEventListener('DOMContentLoaded', function () {
     // Panggil fungsi utama baru kita untuk memuat data dari API
     loadDashboardData();
 
-    // INI SAJA YANG DITAMBAH: Inisialisasi MQTT untuk auto-update
-    mqttDashboard = new MQTTDashboard();
+    // Inisialisasi MQTT DIHAPUS DARI SINI
+
+    // BARU: Pindahkan logic event listener untuk tombol refresh manual ke sini
+    const refreshBtn = document.getElementById('refreshData');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            // Ini adalah isi dari 'manualRefresh'
+            loadDashboardData();
+            updateGlobalStatCards();
+            console.log('🔄 Manual refresh triggered');
+        });
+    }
 
 });

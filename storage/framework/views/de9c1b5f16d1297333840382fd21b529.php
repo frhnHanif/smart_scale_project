@@ -34,12 +34,7 @@
             <span class="connection-status status-disconnected"></span>
             <span id="statusText">MQTT: Disconnected</span>
         </div>
-        
-            
- 
-                
-            
-        
+
     </div>
 </header>
 <?php /**PATH C:\laragon\www\smart_scale_project\resources\views/components/header.blade.php ENDPATH**/ ?>

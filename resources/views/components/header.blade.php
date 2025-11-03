@@ -34,13 +34,6 @@
             <span class="connection-status status-disconnected"></span>
             <span id="statusText">MQTT: Disconnected</span>
         </div>
-        {{-- <div class="flex justify-between items-center mb-6"> --}}
-            {{-- <div class="flex items-center gap-4"> --}}
- 
-                {{-- <button id="refreshData" class="text-sm bg-white px-3 py-2 rounded-lg shadow-sm text-green-600 hover:text-green-700 font-medium transition-colors">
-                    Refresh Data
-                </button> --}}
-            {{-- </div> --}}
-        {{-- //</div> --}}
+
     </div>
 </header>

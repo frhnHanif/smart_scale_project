@@ -18,6 +18,13 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     
+    
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.2/mqttws31.min.js"></script>
+    
+
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -44,6 +51,22 @@
         .filter-btn:not(.filter-btn-active):hover {
             @apply bg-gray-100 text-teal-700;
         }
+
+        /* =================================================================== */
+        /* STYLE INI DITAMBAHKAN (Agar indikator status di header tampil) */
+        /* =================================================================== */
+        .connection-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-connected { background-color: #10B981; }
+        .status-connecting { background-color: #F59E0B; }
+        .status-disconnected { background-color: #EF4444; }
+        .status-error { background-color: #EF4444; }
+        /* =================================================================== */
     </style>
 </head>
 
@@ -145,7 +168,13 @@
     </div>
 
     
+    
+    
+    
+    <script src="<?php echo e(asset('js/GlobalMQTT.js')); ?>"></script>
+    
 
+    
     <script type="module">
         import {
             initFakultasPage

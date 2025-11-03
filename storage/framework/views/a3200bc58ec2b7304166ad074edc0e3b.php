@@ -6,20 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EcoScale - Laporan</title>
 
-    {{-- Favicon --}}
-    <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+    
+    <link rel="icon" type="image/x-icon" href="<?php echo e(asset('favicon.ico')); ?>">
 
-    {{-- Tailwind CSS --}}
+    
     <script src="https://cdn.tailwindcss.com"></script>
 
-    {{-- =================================================================== --}}
-    {{-- BARIS INI DITAMBAHKAN --}}
-    {{-- =================================================================== --}}
-    {{-- Paho MQTT Library (Dibutuhkan oleh GlobalMQTT.js) --}}
+    
+    
+    
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.2/mqttws31.min.js"></script>
-    {{-- =================================================================== --}}
+    
 
-    {{-- Google Fonts (Inter) --}}
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -72,7 +72,7 @@
         /* =================================================================== */
     </style>
     
-    {{-- Memuat library XLSX untuk Excel --}}
+    
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.full.min.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.css">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.js"></script>
@@ -82,18 +82,72 @@
 
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
 
-        <x-header></x-header>
+        <?php if (isset($component)) { $__componentOriginalfd1f218809a441e923395fcbf03e4272 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalfd1f218809a441e923395fcbf03e4272 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.header','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('header'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?> <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalfd1f218809a441e923395fcbf03e4272)): ?>
+<?php $attributes = $__attributesOriginalfd1f218809a441e923395fcbf03e4272; ?>
+<?php unset($__attributesOriginalfd1f218809a441e923395fcbf03e4272); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalfd1f218809a441e923395fcbf03e4272)): ?>
+<?php $component = $__componentOriginalfd1f218809a441e923395fcbf03e4272; ?>
+<?php unset($__componentOriginalfd1f218809a441e923395fcbf03e4272); ?>
+<?php endif; ?>
 
-        <x-cards-stats></x-cards-stats>
+        <?php if (isset($component)) { $__componentOriginal4546b78580f6745ef52d45a2c7626972 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal4546b78580f6745ef52d45a2c7626972 = $attributes; } ?>
+<?php $component = App\View\Components\CardsStats::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('cards-stats'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\CardsStats::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?> <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal4546b78580f6745ef52d45a2c7626972)): ?>
+<?php $attributes = $__attributesOriginal4546b78580f6745ef52d45a2c7626972; ?>
+<?php unset($__attributesOriginal4546b78580f6745ef52d45a2c7626972); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal4546b78580f6745ef52d45a2c7626972)): ?>
+<?php $component = $__componentOriginal4546b78580f6745ef52d45a2c7626972; ?>
+<?php unset($__componentOriginal4546b78580f6745ef52d45a2c7626972); ?>
+<?php endif; ?>
 
-        <x-navbar></x-navbar>
+        <?php if (isset($component)) { $__componentOriginalb9eddf53444261b5c229e9d8b9f1298e = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalb9eddf53444261b5c229e9d8b9f1298e = $attributes; } ?>
+<?php $component = App\View\Components\Navbar::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('navbar'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\Navbar::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?> <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalb9eddf53444261b5c229e9d8b9f1298e)): ?>
+<?php $attributes = $__attributesOriginalb9eddf53444261b5c229e9d8b9f1298e; ?>
+<?php unset($__attributesOriginalb9eddf53444261b5c229e9d8b9f1298e); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalb9eddf53444261b5c229e9d8b9f1298e)): ?>
+<?php $component = $__componentOriginalb9eddf53444261b5c229e9d8b9f1298e; ?>
+<?php unset($__componentOriginalb9eddf53444261b5c229e9d8b9f1298e); ?>
+<?php endif; ?>
 
 
         <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-md mb-8">
             <h3 class="font-semibold text-2xl" style="color: #447F40;">Laporan Dampak Lingkungan</h3>
             <p class="text-sm mb-4 text-gray-500">Kontribusi EcoScale terhadap keberlanjutan kampus</p>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-                {{-- Card 1: CO2 Dikurangi --}}
+                
                 <div class="bg-blue-50 p-4 rounded-lg flex flex-col items-center justify-center text-center">
                     <svg class="w-10 h-10 text-blue-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
@@ -102,7 +156,7 @@
                     <p class="text-xs font-medium text-gray-800 mt-1">CO2 berhasil Dikurangi</p>
                 </div>
 
-                {{-- Card 2: Penurunan Sampah Bulan Ini --}}
+                
                 <div class="bg-green-50 p-4 rounded-lg flex flex-col items-center justify-center text-center">
                     <svg class="w-10 h-10 text-green-400 mb-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 10.414V14a1 1 0 102 0v-3.586l1.293 1.293a1 1 0 001.414-1.414z" clip-rule="evenodd"></path>
@@ -111,7 +165,7 @@
                     <p class="text-xs font-medium text-gray-800 mt-1">Penurunan Sampah Bulan Ini</p>
                 </div>
 
-                {{-- Card 3: Total Sampah Bulan Ini --}}
+                
                 <div class="bg-purple-50 p-4 rounded-lg flex flex-col items-center justify-center text-center">
                     <svg class="w-10 h-10 text-purple-400 mb-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
                         <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path>
@@ -143,11 +197,11 @@
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4 items-end">
                 <div>
                     <label for="start-date" class="block text-sm font-medium text-gray-700">Tanggal Mulai:</label>
-                    <input type="date" id="start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500" value="{{ date('Y-m-01') }}">
+                    <input type="date" id="start-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500" value="<?php echo e(date('Y-m-01')); ?>">
                 </div>
                 <div>
                     <label for="end-date" class="block text-sm font-medium text-gray-700">Tanggal Akhir:</label>
-                    <input type="date" id="end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500" value="{{ date('Y-m-d') }}">
+                    <input type="date" id="end-date" class="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500" value="<?php echo e(date('Y-m-d')); ?>">
                 </div>
                 <div>
                     <label for="faculty-filter" class="block text-sm font-medium text-gray-700">Fakultas:</label>
@@ -173,16 +227,16 @@
             </div>
         </div>
 
-        {{-- === Hasil Laporan === --}}
+        
         <div class="bg-white p-6 rounded-xl shadow-md mb-8">
             
-            {{-- PERUBAHAN #1: TOMBOL EKSPOR PINDAH KE SINI --}}
+            
             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4">
                 <div>
                     <h3 class="font-semibold text-2xl" style="color: #447F40;">Hasil Laporan</h3>
                     <p class="text-sm mb-2 text-gray-500">Generate laporan EcoScale</p>
                 </div>
-                {{-- Tombol "Export" sekarang ada di sini --}}
+                
                 <div>
                     <button id="export-report-btn" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 hidden">
                         Export ke Excel
@@ -221,8 +275,8 @@
                 </table>
             </div>
 
-            {{-- PERUBAHAN #2: KONTROL PAGINATION DITAMBAHKAN DI SINI --}}
-            {{-- Ini adalah baris 204 yang Anda sebutkan, tidak ada yang diubah --}}
+            
+            
             <div id="pagination-controls" class="flex items-center justify-between mt-4 text-sm hidden">
                 <div class="flex items-center gap-2">
                     <label for="per-page-select" class="text-gray-700">Tampil:</label>
@@ -241,23 +295,23 @@
                 </div>
             </div>
             
-            {{-- PERUBAHAN #3: TOMBOL EKSPOR LAMA DI BAWAH INI DIHAPUS --}}
-            {{-- <div class="mt-6 flex justify-end"> ... </div> --}}
+            
+            
         </div>
     </div>
 
-    {{-- =================================================================== --}}
-    {{-- BARIS INI DITAMBAHKAN --}}
-    {{-- =================================================================== --}}
-    {{-- Memuat Skrip MQTT Global --}}
-    <script src="{{ asset('js/GlobalMQTT.js') }}"></script>
-    {{-- =================================================================== --}}
+    
+    
+    
+    
+    <script src="<?php echo e(asset('js/GlobalMQTT.js')); ?>"></script>
+    
 
-    {{-- Skrip inisialisasi JS --}}
+    
     <script type="module">
         import {
             initLaporanPage
-        } from "{{ asset('js/laporan.js') }}";
+        } from "<?php echo e(asset('js/laporan.js')); ?>";
 
         // Langsung panggil initLaporanPage saat DOM siap
         document.addEventListener('DOMContentLoaded', function() {
@@ -265,4 +319,4 @@
         });
     </script>
 </body>
-</html>
+</html><?php /**PATH C:\laragon\www\smart_scale_project\resources\views/laporan.blade.php ENDPATH**/ ?>
