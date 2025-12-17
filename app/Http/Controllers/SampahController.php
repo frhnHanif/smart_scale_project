@@ -16,7 +16,7 @@ class SampahController extends Controller
     {
         // 1. MATIKAN AUTH (Supaya dashboard bisa diakses publik tanpa login)
         // $this->middleware('auth:sanctum');
-        
+
         $this->mqttService = new MQTTService();
     }
 
@@ -40,7 +40,7 @@ class SampahController extends Controller
         });
 
         $perPage = $request->input('per_page', 25);
-        
+
         // Ambil data
         $data = $query->orderBy('timestamp', 'desc')->paginate($perPage);
 
@@ -70,8 +70,8 @@ class SampahController extends Controller
     }
 
     // ... Biarkan fungsi getLatestData, getDashboardStats, dan receiveDataFromESP32 seperti semula ...
-    
-    public function getLatestData() 
+
+    public function getLatestData()
     {
         // ... kode lama ...
         try {
@@ -86,14 +86,14 @@ class SampahController extends Controller
             ]);
         } catch (\Exception $e) {
             // ...
-             return response()->json(['success' => false], 500);
+            return response()->json(['success' => false], 500);
         }
     }
 
     public function getDashboardStats()
     {
         // ... kode lama ...
-         try {
+        try {
             $stats = [
                 'total_berat' => Sampah::sum('berat'),
                 'total_records' => Sampah::count(),
@@ -103,43 +103,43 @@ class SampahController extends Controller
             ];
             return response()->json(['success' => true, 'stats' => $stats]);
         } catch (\Exception $e) {
-             return response()->json(['success' => false], 500);
+            return response()->json(['success' => false], 500);
         }
     }
-    
+
     public function receiveDataFromESP32(Request $request)
     {
         // ... kode lama ...
         // Kode ini sudah benar karena tidak pakai forCurrentUser
         // Dan middleware sudah dimatikan di __construct
-        
-         $expectedApiKey = "210601";
-         // ... dst (kode sama persis) ...
-         $receivedApiKey = $request->input('api_key');
-         if (!$receivedApiKey || $receivedApiKey !== $expectedApiKey) {
+
+        $expectedApiKey = "210601";
+        // ... dst (kode sama persis) ...
+        $receivedApiKey = $request->input('api_key');
+        if (!$receivedApiKey || $receivedApiKey !== $expectedApiKey) {
             return response()->json(['message' => 'Unauthorized'], 403);
-         }
-         
-         // ... Simpan data ...
-         $sampah = Sampah::create([
-                'berat' => $request->input('berat'),
-                'fakultas' => $request->input('fakultas'),
-                'jenis' => $request->input('jenis'),
-                'timestamp' => now()
-         ]);
-         
-         // ... MQTT ...
-         $mqttData = [
-             'type' => 'new_data',
-             'id' => $sampah->id,
-             'berat' => $sampah->berat,
-             'fakultas' => $sampah->fakultas,
-             'jenis' => $sampah->jenis,
-             'timestamp' => $sampah->timestamp->toISOString()
-         ];
-         $this->mqttService->publish('undip/scale/new', json_encode($mqttData));
-         
-         return response()->json(['message' => 'Data berhasil disimpan!', 'id' => $sampah->id], 201);
+        }
+
+        // ... Simpan data ...
+        $sampah = Sampah::create([
+            'berat' => $request->input('berat'),
+            'fakultas' => $request->input('fakultas'),
+            'jenis' => $request->input('jenis'),
+            'timestamp' => now()
+        ]);
+
+        // ... MQTT ...
+        $mqttData = [
+            'type' => 'new_data',
+            'id' => $sampah->id,
+            'berat' => $sampah->berat,
+            'fakultas' => $sampah->fakultas,
+            'jenis' => $sampah->jenis,
+            'timestamp' => $sampah->timestamp->toISOString()
+        ];
+        $this->mqttService->publish('undip/scale/new', json_encode($mqttData));
+
+        return response()->json(['message' => 'Data berhasil disimpan!', 'id' => $sampah->id], 201);
     }
 
     public function getMqttConfig()
@@ -150,5 +150,52 @@ class SampahController extends Controller
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'config' => []]);
         }
+    }
+
+    public function storeManual(Request $request)
+    {
+        // 1. Validasi input
+        $validator = Validator::make($request->all(), [
+            'jenis_sampah' => 'required|string|in:organik,anorganik,residu,botol,kertas',
+            'fakultas' => 'required|string|max:255',
+            'berat' => 'required|numeric|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // 2. Simpan data ke database
+        $sampah = Sampah::create([
+            'berat' => $request->input('berat'),
+            'fakultas' => $request->input('fakultas'),
+            'jenis' => $request->input('jenis_sampah'),
+            'timestamp' => now()
+        ]);
+
+        // 3. Publikasikan data ke MQTT (opsional, tapi bagus untuk real-time update)
+        try {
+            $mqttData = [
+                'type' => 'new_data',
+                'id' => $sampah->id,
+                'berat' => $sampah->berat,
+                'fakultas' => $sampah->fakultas,
+                'jenis' => $sampah->jenis,
+                'timestamp' => $sampah->timestamp->toISOString()
+            ];
+            if ($this->mqttService) {
+                $this->mqttService->publish('undip/scale/new', json_encode($mqttData));
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to publish manual input to MQTT: ' . $e->getMessage());
+            // Jangan hentikan proses hanya karena MQTT gagal
+        }
+
+        // 4. Kirim respon JSON sukses dengan format yang diharapkan frontend
+        return response()->json([
+            'success' => true,
+            'message' => 'Data sampah berhasil disimpan!',
+            'data' => $sampah
+        ], 201);
     }
 }

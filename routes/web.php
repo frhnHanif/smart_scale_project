@@ -43,3 +43,9 @@ Route::get('/analitik', function () {
 Route::get('/laporan', function () {
     return view('laporan');
 });
+
+Route::get('/input-manual', function () {
+    return view('input-manual');
+});
+
+Route::post('/submit-manual-input', [SampahController::class, 'storeManual']);
